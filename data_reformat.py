@@ -608,7 +608,7 @@ def main():
         save_folder = pathlib.Path(save_folder_name)
         save_folder.mkdir(parents=True, exist_ok=True)
         for case in cases:
-            case_name = f"Simulated Demo Case {case}"
+            case_name = f"DT Lung Demo Case {case}"
             with pd.ExcelWriter(save_folder / f"{case_name}.xlsx") as writer:
                 hourly_display_df = hourly_input_to_display(
                     hourly_input_df.loc[case],
