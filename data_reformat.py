@@ -123,6 +123,7 @@ def get_protein_input_name(display_name, timestamp):
 def get_protein_slope_input_name(display_name, timestamp):
     if display_name in protein_code:
         feature_code = protein_code[display_name]
+
     else:
         raise KeyError(f"Display name '{display_name}' not found in protein display name to input name mapping.")
     if timestamp in protein_slope_order_reversed:
