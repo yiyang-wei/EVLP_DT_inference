@@ -5,9 +5,11 @@ torch==2.3.1; platform_system == "Windows"
 scikit-learn==1.6.0
 numpy==1.26.4
 pandas
+openpyxl
 shap
 tqdm
 xgboost
 wandb
 plotly
 streamlit
+huggingface_hub

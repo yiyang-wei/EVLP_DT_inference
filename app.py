@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import pathlib
+from huggingface_hub import snapshot_download
 
 
 hourly_parameter_dict = {
@@ -53,9 +54,21 @@ protein_dict = {
     'IL-1b': 'Interleukin-1β (pg/mL)'
 }
 
+gru_parameter_dict = {
+    'Dy_comp(mL_cmH2O)': 'Dynamic Compliance (mL/cmH₂O)',
+    'P_mean(cmH2O)': 'Mean Airway Pressure (cmH₂O)',
+    'P_peak(cmH2O)': 'Peak Airway Pressure (cmH₂O)',
+    'Ex_vol(mL)': 'Expiratory Volume (mL)'
+}
+
 @st.cache_data
-def load_data(file_path):
-    return pd.read_csv(file_path, index_col=0)
+def load_data(file_path, index_col=None):
+    return pd.read_csv(file_path, index_col=index_col)
+
+@st.cache_resource
+def download_model(repo_id):
+    model_path = snapshot_download(repo_id)
+    return model_path
 
 def hourly_input_to_display(hourly_input_one_case):
     hourly_features = []
@@ -138,10 +151,24 @@ def calculate_protein_slopes(protein_input_one_case):
 
 def transcriptomics_input_to_display(transcriptomics_input_x_one_case, transcriptomics_input_y_one_case):
     transcriptomics_features = [col.replace("_cit1", "") for col in transcriptomics_input_x_one_case.index]
-    transcriptomics_case = pd.DataFrame(index=transcriptomics_features, columns=["1st Hour", "3rd Hour"])
-    transcriptomics_case["1st Hour"] = transcriptomics_input_x_one_case.values
-    transcriptomics_case["3rd Hour"] = transcriptomics_input_y_one_case.values
+    transcriptomics_case = pd.DataFrame(index=transcriptomics_features, columns=["Pre-perfusion", "Post-perfusion"])
+    transcriptomics_case["Pre-perfusion"] = transcriptomics_input_x_one_case.values
+    transcriptomics_case["Post-perfusion"] = transcriptomics_input_y_one_case[[f"{feature}_cit2" for feature in transcriptomics_features]].values
     return transcriptomics_case
+
+def time_series_input_to_display(time_series_input_one_case: pd.DataFrame):
+    breath_cols = time_series_input_one_case.columns[2:]
+    ts_dfs = {
+        "A1": pd.DataFrame(index=breath_cols, columns=list(gru_parameter_dict.values())),
+        "A2": pd.DataFrame(index=breath_cols, columns=list(gru_parameter_dict.values())),
+        "A3": pd.DataFrame(index=breath_cols, columns=list(gru_parameter_dict.values())),
+    }
+    for i, row in time_series_input_one_case.iterrows():
+        sp = row["Simulated Parameter"]
+        h = sp[:2]
+        param = sp[6:]
+        ts_dfs[h][gru_parameter_dict[param]] = row[breath_cols].values
+    return ts_dfs
 
 
 def main():
@@ -152,12 +179,9 @@ def main():
         layout="wide",
     )
 
-    with st.container(border=True):
-        pass
-
     st.title(":material/respiratory_rate: Ex-Vivo Lung Perfusion Digital Twin")
 
-    data_folder = pathlib.Path("Data")
+    data_folder = pathlib.Path("Data_for_demo")
     model_folder = pathlib.Path("Model")
     output_folder = pathlib.Path("Output")
 
@@ -166,81 +190,113 @@ def main():
     protein_model_folder = xgb_folder / "Protein"
     transcriptomics_model_folder = xgb_folder / "Transcriptomics"
 
-    new_hourly_data_path = data_folder / "hourly_data_simulated.csv"
-    new_edema_data_path = data_folder / "edema_data_simulated.csv"
+    # new_hourly_data_path = data_folder / "hourly_data_simulated.csv"
+    # new_edema_data_path = data_folder / "edema_data_simulated.csv"
+    # new_pc_1h_data_path = data_folder / "PC1h_data_simulated.csv"
+    # new_pc_3h_data_path = data_folder / "PC3h_data_simulated.csv"
+    # new_protein_data_path = data_folder / "protein_data_simulated_withslopes.csv"
+    # new_transcriptomics_x_data_path = data_folder / "transcriptomics1_data_simulated.csv"
+    # new_transcriptomics_y_data_path = data_folder / "transcriptomics2_data_simulated.csv"
+    # new_time_series_data_path = data_folder / "ts_data_simulated.csv"
+    new_hourly_data_path = data_folder / "Hourly.csv"
+    new_edema_data_path = data_folder / "edema.csv"
     new_pc_1h_data_path = data_folder / "PC1h_data_simulated.csv"
     new_pc_3h_data_path = data_folder / "PC3h_data_simulated.csv"
-    new_protein_data_path = data_folder / "protein_data_simulated_withslopes.csv"
-    new_transcriptomics_x_data_path = data_folder / "transcriptomics1_data_simulated.csv"
-    new_transcriptomics_y_data_path = data_folder / "transcriptomics2_data_simulated.csv"
-    new_time_series_data_path = data_folder / "ts_data_simulated.csv"
+    new_protein_data_path = data_folder / "Protein.csv"
+    new_transcriptomics_x_data_path = data_folder / "microarray_cit1_data_simulated.csv"
+    new_transcriptomics_y_data_path = data_folder / "microarray_cit2_data_simulated.csv"
+    new_time_series_data_path = data_folder / "data_simulated.csv"
 
-    new_hourly_df = load_data(new_hourly_data_path)
-    new_hourly_df.set_index(new_hourly_df.columns[0], inplace=True, drop=True)
-    new_edema_df = load_data(new_edema_data_path)
-    new_edema_df.set_index(new_edema_df.columns[0], inplace=True, drop=True)
+    # new_hourly_df = load_data(new_hourly_data_path, 1)
+    # new_hourly_df.drop(columns=[new_hourly_df.columns[0]], inplace=True)
+    # new_edema_df = load_data(new_edema_data_path, 1)
+    # new_edema_df.drop(columns=[new_edema_df.columns[0]], inplace=True)
+    # new_hourly_combined_df = pd.concat([new_hourly_df, new_edema_df], axis=1)
+    #
+    # new_pc_1h_df = load_data(new_pc_1h_data_path, 1)
+    # new_pc_1h_df.drop(columns=[new_pc_1h_df.columns[0]], inplace=True)
+    # new_pc_3h_df = load_data(new_pc_3h_data_path, 1)
+    # new_pc_3h_df.drop(columns=[new_pc_3h_df.columns[0]], inplace=True)
+    #
+    # new_protein_data = load_data(new_protein_data_path, 1)
+    # new_protein_data.drop(columns=[new_protein_data.columns[0]], inplace=True)
+    #
+    # new_transcriptomics_x_data = load_data(new_transcriptomics_x_data_path, 1)
+    # new_transcriptomics_x_data.drop(columns=[new_transcriptomics_x_data.columns[0]], inplace=True)
+    # new_transcriptomics_y_data = load_data(new_transcriptomics_y_data_path, 1)
+    # new_transcriptomics_y_data.drop(columns=[new_transcriptomics_y_data.columns[0]], inplace=True)
+    #
+    # new_time_series_data = load_data(new_time_series_data_path)
+    # new_time_series_data.drop(columns=[new_time_series_data.columns[0]], inplace=True)
+
+    new_hourly_df = load_data(new_hourly_data_path, 0)
+    new_edema_df = load_data(new_edema_data_path, 0)
     new_hourly_combined_df = pd.concat([new_hourly_df, new_edema_df], axis=1)
 
-    new_pc_1h_df = load_data(new_pc_1h_data_path)
-    new_pc_1h_df.set_index(new_pc_1h_df.columns[0], inplace=True, drop=True)
-    new_pc_3h_df = load_data(new_pc_3h_data_path)
-    new_pc_3h_df.set_index(new_pc_3h_df.columns[0], inplace=True, drop=True)
+    new_pc_1h_df = load_data(new_pc_1h_data_path, 0)
+    new_pc_3h_df = load_data(new_pc_3h_data_path, 0)
 
-    new_protein_data = load_data(new_protein_data_path)
-    new_protein_data.set_index(new_protein_data.columns[0], inplace=True, drop=True)
+    new_protein_data = load_data(new_protein_data_path, 0)
 
-    new_transcriptomics_x_data = load_data(new_transcriptomics_x_data_path)
-    new_transcriptomics_x_data.set_index(new_transcriptomics_x_data.columns[0], inplace=True, drop=True)
-    new_transcriptomics_y_data = load_data(new_transcriptomics_y_data_path)
-    new_transcriptomics_y_data.set_index(new_transcriptomics_y_data.columns[0], inplace=True, drop=True)
+    new_transcriptomics_x_data = load_data(new_transcriptomics_x_data_path, 0)
+    new_transcriptomics_y_data = load_data(new_transcriptomics_y_data_path, 0)
+    # print(f"Transcriptomics X data shape: {new_transcriptomics_x_data.shape}")
+    # print(f"Transcriptomics Y data shape: {new_transcriptomics_y_data.shape}")
+    # cit1_cols = (col.replace("_cit1", "") for col in new_transcriptomics_x_data.columns)
+    # cit2_cols = (col.replace("_cit2", "") for col in new_transcriptomics_y_data.columns)
+    # print(F"Missing columns in Transcriptomics X: {set(cit1_cols) - set(cit2_cols)}")
+    # print(F"Missing columns in Transcriptomics Y: {set(cit2_cols) - set(cit1_cols)}")
+    # print(len(new_transcriptomics_x_data.columns.unique()))
+    # print(len(new_transcriptomics_y_data.columns.unique()))
+    #
+    # return
 
     new_time_series_data = load_data(new_time_series_data_path)
-    new_time_series_data.set_index(new_time_series_data.columns[0], inplace=True, drop=True)
 
-    # with st.expander("Raw Input Tables", expanded=False):
-    #     (
-    #         raw_hourly_tab,
-    #         raw_edema_tab,
-    #         raw_pc_1h_tab,
-    #         raw_pc_3h_tab,
-    #         raw_protein_tab,
-    #         raw_transcriptomics_x_tab,
-    #         raw_transcriptomics_y_tab,
-    #         raw_time_series_tab,
-    #     ) = st.tabs([
-    #         "Hourly Data",
-    #         "Edema Data",
-    #         "PC 1H Data",
-    #         "PC 3H Data",
-    #         "Protein Data",
-    #         "Transcriptomics X Data",
-    #         "Transcriptomics Y Data",
-    #         "Time Series Data"
-    #     ])
-    #     with raw_hourly_tab:
-    #         st.subheader("Hourly Data")
-    #         st.dataframe(new_hourly_df, use_container_width=True)
-    #     with raw_edema_tab:
-    #         st.subheader("Edema Data")
-    #         st.dataframe(new_edema_df, use_container_width=True)
-    #     with raw_pc_1h_tab:
-    #         st.subheader("PC 1H Data")
-    #         st.dataframe(new_pc_1h_df, use_container_width=True)
-    #     with raw_pc_3h_tab:
-    #         st.subheader("PC 3H Data")
-    #         st.dataframe(new_pc_3h_df, use_container_width=True)
-    #     with raw_protein_tab:
-    #         st.subheader("Protein Data")
-    #         st.dataframe(new_protein_data, use_container_width=True)
-    #     with raw_transcriptomics_x_tab:
-    #         st.subheader("Transcriptomics X Data")
-    #         st.dataframe(new_transcriptomics_x_data, use_container_width=True)
-    #     with raw_transcriptomics_y_tab:
-    #         st.subheader("Transcriptomics Y Data")
-    #         st.dataframe(new_transcriptomics_y_data, use_container_width=True)
-    #     with raw_time_series_tab:
-    #         st.subheader("Time Series Data")
-    #         st.dataframe(new_time_series_data, use_container_width=True)
+    with st.expander("Raw Input Tables", expanded=False):
+        (
+            raw_hourly_tab,
+            raw_edema_tab,
+            raw_pc_1h_tab,
+            raw_pc_3h_tab,
+            raw_protein_tab,
+            raw_transcriptomics_x_tab,
+            raw_transcriptomics_y_tab,
+            raw_time_series_tab,
+        ) = st.tabs([
+            "Hourly Data",
+            "Edema Data",
+            "PC 1H Data",
+            "PC 3H Data",
+            "Protein Data",
+            "Transcriptomics X Data",
+            "Transcriptomics Y Data",
+            "Time Series Data"
+        ])
+        with raw_hourly_tab:
+            st.subheader("Hourly Data")
+            st.dataframe(new_hourly_df, use_container_width=True)
+        with raw_edema_tab:
+            st.subheader("Edema Data")
+            st.dataframe(new_edema_df, use_container_width=True)
+        with raw_pc_1h_tab:
+            st.subheader("PC 1H Data")
+            st.dataframe(new_pc_1h_df, use_container_width=True)
+        with raw_pc_3h_tab:
+            st.subheader("PC 3H Data")
+            st.dataframe(new_pc_3h_df, use_container_width=True)
+        with raw_protein_tab:
+            st.subheader("Protein Data")
+            st.dataframe(new_protein_data, use_container_width=True)
+        with raw_transcriptomics_x_tab:
+            st.subheader("Transcriptomics X Data")
+            st.dataframe(new_transcriptomics_x_data, use_container_width=True)
+        with raw_transcriptomics_y_tab:
+            st.subheader("Transcriptomics Y Data")
+            st.dataframe(new_transcriptomics_y_data, use_container_width=True)
+        with raw_time_series_tab:
+            st.subheader("Time Series Data")
+            st.dataframe(new_time_series_data, use_container_width=True)
 
     st.subheader("Step 1: Prepare Data")
 
@@ -252,7 +308,7 @@ def main():
 
     col1, col2 = st.columns(2)
     with col1:
-        case_name_prefix = "Simulated Donor "
+        case_name_prefix = "Simulated Demo Case "
         selected_case_name = st.selectbox(
             "Select a case for inference",
             options=[case_name_prefix + str(i) for i in new_hourly_df.index],
@@ -277,19 +333,25 @@ def main():
         new_transcriptomics_y_data.loc[selected_case_id]
     )
 
+    time_series_case = time_series_input_to_display(new_time_series_data.loc[new_time_series_data["Demo ID"] == selected_case_id])
+
     with (st.expander(f"Data for {selected_case_name}", expanded=True)):
         (
             case_hourly_tab,
             case_pc_tab,
             case_protein_tab,
             case_transcriptomics_tab,
-            case_time_series_tab,
+            case_time_series_a1_tab,
+            case_time_series_a2_tab,
+            case_time_series_a3_tab,
         ) = st.tabs([
-            "Hourly Data",
-            "PC Data",
+            "Hourly Lung Function Data",
+            "Lung Image Data",
             "Protein Data",
             "Transcriptomics Data",
-            "Time Series Data"
+            "1st Hour per-breath Data",
+            "2nd Hour per-breath Data",
+            "3rd Hour per-breath Data"
         ])
         with case_hourly_tab:
             hourly_case = st.data_editor(hourly_case, disabled=["_index"], use_container_width=True)
@@ -301,6 +363,24 @@ def main():
             st.dataframe(protein_slope_case, use_container_width=True)
         with case_transcriptomics_tab:
             transcriptomics_case = st.data_editor(transcriptomics_case, disabled=["_index"], use_container_width=True)
+        with case_time_series_a1_tab:
+            time_series_a1_case = st.data_editor(time_series_case["A1"], disabled=["_index"], use_container_width=True)
+        with case_time_series_a2_tab:
+            time_series_a2_case = st.data_editor(time_series_case["A2"], disabled=["_index"], use_container_width=True)
+        with case_time_series_a3_tab:
+            time_series_a3_case = st.data_editor(time_series_case["A3"], disabled=["_index"], use_container_width=True)
+
+    # combine all the data into a single excel file
+    excel_save_folder = pathlib.Path("Demo Data")
+    excel_save_folder.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(excel_save_folder / f"{selected_case_name}.xlsx") as writer:
+        hourly_case.to_excel(writer, sheet_name='Hourly Lung Function Data', index=True)
+        pc_case.to_excel(writer, sheet_name='Lung Image Data', index=True)
+        protein_case.to_excel(writer, sheet_name='Protein Data', index=True)
+        transcriptomics_case.to_excel(writer, sheet_name='Transcriptomics Data', index=True)
+        time_series_a1_case.to_excel(writer, sheet_name='1st Hour per-breath Data', index=True)
+        time_series_a2_case.to_excel(writer, sheet_name='2nd Hour per-breath Data', index=True)
+        time_series_a3_case.to_excel(writer, sheet_name='3rd Hour per-breath Data', index=True)
 
     st.subheader("Run Inference")
     run_inference = st.button(
@@ -362,9 +442,6 @@ def main():
             mime="text/csv",
             use_container_width=True
         )
-
-
-
 
 
 if __name__ == "__main__":
