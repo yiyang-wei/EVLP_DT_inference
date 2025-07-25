@@ -12,4 +12,5 @@ xgboost
 wandb
 plotly
 streamlit
+watchdog
 huggingface_hub
