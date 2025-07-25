@@ -34,7 +34,7 @@ hourly_name = {
     'LA pH': 'pH',
     'LA PO2': 'Arterial Partial Pressure O₂ (mmHg)',
     'PA PO2': 'Venous Partial Pressure O₂ (mmHg)',
-    'STEEN lost': 'STEEN Lost (mL)',
+    'STEEN lost': 'Edema (mL)',
 }
 hourly_code = {v: k for k, v in hourly_name.items()}
 def get_hourly_display_name(colname):
@@ -99,9 +99,9 @@ protein_name = {
     'IL-1b': 'Interleukin-1β (pg/mL)'
 }
 protein_slope_order = {
-    'slope_120': 'Slope at 2nd Hour',
-    'slope_150': 'Slope at 150 Minutes',
-    'slope_180': 'Slope at 3rd Hour'
+    'slope_120': 'Derived slope at 2Hr',
+    'slope_150': 'Derived slope at 150Mins',
+    'slope_180': 'Derived slope at 3Hr'
 }
 protein_code = {v: k for k, v in protein_name.items()}
 protein_slope_order_reversed = {v: k for k, v in protein_slope_order.items()}
@@ -132,8 +132,8 @@ def get_protein_slope_input_name(display_name, timestamp):
     return f"{feature_code}_{slope_sufix}"
 
 transcriptomics_order = {
-    "_cit1": "Pre-perfusion",
-    "_cit2": "Post-perfusion"
+    "_cit1": "Baseline",
+    "_cit2": "Target"
 }
 transcriptomics_order_reversed = {v: k for k, v in transcriptomics_order.items()}
 
@@ -158,13 +158,13 @@ per_breath_name = {
 }
 per_breath_code = {v: k for k, v in per_breath_name.items()}
 
-hourly_lung_function_sheet = "Hourly Lung Function Data"
-lung_image_sheet = "Lung Image Data"
+hourly_lung_function_sheet = "Lung Function Hourly Data"
+lung_image_sheet = "Lung X-ray Image Data"
 protein_sheet = "Protein Data"
 transcriptomics_sheet = "Transcriptomics Data"
-per_breath_h1_sheet = "1st Hour per-breath Data"
-per_breath_h2_sheet = "2nd Hour per-breath Data"
-per_breath_h3_sheet = "3rd Hour per-breath Data"
+per_breath_h1_sheet = "1Hr Per-breath Data"
+per_breath_h2_sheet = "2Hr Per-breath Data"
+per_breath_h3_sheet = "3Hr Per-breath Data"
 
 @st.cache_data
 def load_data(file_path):
@@ -357,55 +357,54 @@ def main():
         cit2_input_tab2,
         ts_input_tab,
     ) = st.tabs([
-        "Hourly data",
-        "Edema data",
-        "Image PC 1hr data",
-        "Image PC 3hr data",
-        "Protein data",
-        "Transcriptomics cit1 data",
-        "Transcriptomics cit2 data",
-        "Timeseries data"
+        "Lung Function Hourly Data",
+        "Lung Edema Data",
+        "Lung X-ray 1Hr Data",
+        "Lung X-ray 3Hr Data",
+        "Protein Data",
+        "Transcriptomics Baseline Data",
+        "Transcriptomics Target Data",
+        "Per-breath Time-series Data"
     ])
 
     with hourly_input_tab:
         hourly_input_df = get_csv_input(
-            uploader_label=f"Upload Hourly data CSV file",
+            uploader_label=f"Upload Lung Function Hourly CSV File",
             key="hourly_input",
         )
     with edema_input_tab:
         edema_input_df = get_csv_input(
-            uploader_label=f"Upload Edema data CSV file",
+            uploader_label=f"Upload Lung Edema Data CSV File",
             key="edema_input",
         )
     with pc_1hr_input_tab:
         pc_1hr_input_df = get_csv_input(
-            uploader_label=f"Upload Image PC 1hr data CSV file",
+            uploader_label=f"Upload Lung X-ray 1Hr Data CSV File",
             key="pc_1hr_input",
         )
     with pc_3hr_input_tab:
         pc_3hr_input_df = get_csv_input(
-            uploader_label=f"Upload Image PC 3hr data CSV file",
+            uploader_label=f"Upload Lung X-ray 3hr Data CSV File",
             key="pc_3hr_input",
         )
     with protein_input_tab:
         protein_input_df = get_csv_input(
-            uploader_label=f"Upload Protein data CSV file",
+            uploader_label=f"Upload Protein Data CSV File",
             key="protein_input",
         )
     with cit1_input_tab:
         cit1_input_df = get_csv_input(
-            uploader_label=f"Upload Transcriptomics cit1 data CSV file",
+            uploader_label=f"Upload Transcriptomics Baseline Data CSV File",
             key="cit1_input",
         )
     with cit2_input_tab2:
         cit2_input_df = get_csv_input(
-            uploader_label=f"Upload Transcriptomics cit2 data CSV file",
+            uploader_label=f"Upload Transcriptomics Target Data CSV File",
             key="cit2_input",
         )
     with ts_input_tab:
-        timeseries_input_name = "Timeseries data"
         timeseries_input_df = get_csv_input(
-            uploader_label=f"Upload Timeseries data CSV file",
+            uploader_label=f"Upload Per-breath Time-series Data CSV File",
             key="ts_input",
             ts=True
         )
@@ -429,7 +428,7 @@ def main():
         cases = timeseries_input_df.index.get_level_values(0).unique()
 
     st.subheader("Step 2: Review Display Data")
-    case_name_prefix = "Simulated Demo Case "
+    case_name_prefix = "Demo Case "
     selected_case_name = st.selectbox(
         "Select a case for display",
         options=(case_name_prefix + str(case) for case in cases),
@@ -461,23 +460,23 @@ def main():
     transcriptomics_display_df = None
 
     if hourly_input_df is None:
-        hourly_display_tab.warning("No Hourly data uploaded.")
+        hourly_display_tab.warning("No Lung Function Hourly Data Uploaded.")
     if edema_input_df is None:
-        hourly_display_tab.warning("No Edema data uploaded.")
+        hourly_display_tab.warning("No Lung Edema Data Uploaded.")
     if hourly_input_df is not None and edema_input_df is not None:
         hourly_display_df = hourly_input_to_display(hourly_input_df.loc[selected_case_id], edema_input_df.loc[selected_case_id])
         hourly_display_tab.dataframe(hourly_display_df, use_container_width=True)
 
     if pc_1hr_input_df is None:
-        pc_display_tab.warning("No Image PC 1hr data uploaded.")
+        pc_display_tab.warning("No Lung X-ray 1Hr Data Uploaded.")
     if pc_3hr_input_df is None:
-        pc_display_tab.warning("No Image PC 3hr data uploaded.")
+        pc_display_tab.warning("No Lung X-ray 3Hr Data Uploaded.")
     if pc_1hr_input_df is not None and pc_3hr_input_df is not None:
         pc_display_df = image_pc_input_to_display(pc_1hr_input_df.loc[selected_case_id], pc_3hr_input_df.loc[selected_case_id])
         pc_display_tab.dataframe(pc_display_df, use_container_width=True)
 
     if protein_input_df is None:
-        protein_display_tab.warning("No Protein data uploaded.")
+        protein_display_tab.warning("No Protein Data Uploaded.")
     if protein_input_df is not None:
         protein_display_df = protein_input_to_display(protein_input_df.loc[selected_case_id])
         protein_display_tab.dataframe(protein_display_df, use_container_width=True)
@@ -485,9 +484,9 @@ def main():
         protein_display_tab.dataframe(protein_slope_df, use_container_width=True)
 
     if cit1_input_df is None:
-        transcriptomics_display_tab.warning("No Transcriptomics cit1 data uploaded.")
+        transcriptomics_display_tab.warning("No Transcriptomics Baseline Data Uploaded.")
     if cit2_input_df is None:
-        transcriptomics_display_tab.warning("No Transcriptomics cit2 data uploaded.")
+        transcriptomics_display_tab.warning("No Transcriptomics Target Data Uploaded.")
     if cit1_input_df is not None and cit2_input_df is not None:
         transcriptomics_display_df = transcriptomics_input_to_display(
             cit1_input_df.loc[selected_case_id],
@@ -496,9 +495,9 @@ def main():
         transcriptomics_display_tab.dataframe(transcriptomics_display_df, use_container_width=True)
 
     if timeseries_input_df is None:
-        ts_h1_display_tab.warning("No Timeseries data uploaded.")
-        ts_h2_display_tab.warning("No Timeseries data uploaded.")
-        ts_h3_display_tab.warning("No Timeseries data uploaded.")
+        ts_h1_display_tab.warning("No Per-breath Time-series Data Uploaded.")
+        ts_h2_display_tab.warning("No Per-breath Time-series Data Uploaded.")
+        ts_h3_display_tab.warning("No Per-breath Time-series Data Uploaded.")
     else:
         timeseries_display_dfs = time_series_input_to_display(timeseries_input_df.loc[selected_case_id])
         ts_h1_display_tab.dataframe(timeseries_display_dfs["A1"], use_container_width=True)
@@ -512,22 +511,22 @@ def main():
         protein_model_input_tab,
         cit_model_input_tab,
     ) = st.tabs([
-        "Hourly data",
-        "Image PC data",
-        "Protein data",
-        "Transcriptomics data",
+        "Lung Function Hourly Data",
+        "Lung X-ray Data",
+        "Protein Data",
+        "Transcriptomics Data",
     ])
     if hourly_display_df is not None:
         hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_display_df)], index=[selected_case_id])
         hourly_model_input_tab.dataframe(hourly_model_input_df)
         if np.allclose(hourly_model_input_df.loc[selected_case_id, hourly_input_df.columns], hourly_input_df.loc[selected_case_id]):
-            hourly_model_input_tab.success("Reverted hourly data matches the original input data.")
+            hourly_model_input_tab.success("Reverted Lung Function Hourly Data matches the original input data.")
         else:
-            hourly_model_input_tab.error("Reverted Hourly data does not match the original input data.")
+            hourly_model_input_tab.error("Reverted Lung Function Hourly Data does not match the original input data.")
         if np.allclose(hourly_model_input_df.loc[selected_case_id, edema_input_df.columns], edema_input_df.loc[selected_case_id]):
-            hourly_model_input_tab.success("Reverted Edema data matches the original input data.")
+            hourly_model_input_tab.success("Reverted Lung Edema Data matches the original input data.")
         else:
-            hourly_model_input_tab.error("Reverted Edema data does not match the original input data.")
+            hourly_model_input_tab.error("Reverted Lung Edema Data does not match the original input data.")
     if pc_display_df is not None:
         pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(pc_display_df)
         pc_model_input_h1_df = pd.DataFrame([pc_model_input_h1_df], index=[selected_case_id])
@@ -535,13 +534,13 @@ def main():
         pc_model_input_tab.dataframe(pc_model_input_h1_df, use_container_width=True)
         pc_model_input_tab.dataframe(pc_model_input_h3_df, use_container_width=True)
         if np.allclose(pc_model_input_h1_df.loc[selected_case_id, pc_1hr_input_df.columns], pc_1hr_input_df.loc[selected_case_id]):
-            pc_model_input_tab.success("Reverted Image PC 1hr data matches the original input data.")
+            pc_model_input_tab.success("Reverted Lung X-ray 1Hr Data matches the original input data.")
         else:
-            pc_model_input_tab.error("Reverted Image PC 1hr data does not match the original input data.")
+            pc_model_input_tab.error("Reverted Lung X-ray 1Hr Data does not match the original input data.")
         if np.allclose(pc_model_input_h3_df.loc[selected_case_id, pc_3hr_input_df.columns], pc_3hr_input_df.loc[selected_case_id]):
-            pc_model_input_tab.success("Reverted Image PC 3hr data matches the original input data.")
+            pc_model_input_tab.success("Reverted Lung X-ray 3Hr Data matches the original input data.")
         else:
-            pc_model_input_tab.error("Reverted Image PC 3hr data does not match the original input data.")
+            pc_model_input_tab.error("Reverted Lung X-ray 3Hr Data does not match the original input data.")
 
     if protein_display_df is not None:
         protein_model_input_df = pd.DataFrame([protein_display_to_input(protein_display_df)], index=[selected_case_id])
@@ -549,44 +548,44 @@ def main():
         protein_with_slope_model_input_df = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
         protein_model_input_tab.dataframe(protein_with_slope_model_input_df, use_container_width=True)
         if np.allclose(protein_with_slope_model_input_df.loc[selected_case_id, protein_input_df.columns], protein_input_df.loc[selected_case_id]):
-            protein_model_input_tab.success("Reverted Protein data matches the original input data.")
+            protein_model_input_tab.success("Reverted Protein Data matches the original input data.")
         else:
-            protein_model_input_tab.error("Reverted Protein data does not match the original input data.")
+            protein_model_input_tab.error("Reverted Protein Data does not match the original input data.")
 
     if transcriptomics_display_df is not None:
         transcriptomics_model_input_df = pd.DataFrame([transcriptomics_display_to_input(transcriptomics_display_df)], index=[selected_case_id])
         cit_model_input_tab.dataframe(transcriptomics_model_input_df, use_container_width=True)
         if np.allclose(transcriptomics_model_input_df.loc[selected_case_id, cit1_input_df.columns], cit1_input_df.loc[selected_case_id]):
-            cit_model_input_tab.success("Reverted Transcriptomics cit1 data matches the original input data.")
+            cit_model_input_tab.success("Reverted Transcriptomics Baseline Data matches the original input data.")
         else:
-            cit_model_input_tab.error("Reverted Transcriptomics cit1 data does not match the original input data.")
+            cit_model_input_tab.error("Reverted Transcriptomics Baseline Data does not match the original input data.")
         if np.allclose(transcriptomics_model_input_df.loc[selected_case_id, cit2_input_df.columns], cit2_input_df.loc[selected_case_id]):
-            cit_model_input_tab.success("Reverted Transcriptomics cit2 data matches the original input data.")
+            cit_model_input_tab.success("Reverted Transcriptomics Target Data matches the original input data.")
         else:
-            cit_model_input_tab.error("Reverted Transcriptomics cit2 data does not match the original input data.")
+            cit_model_input_tab.error("Reverted Transcriptomics Target Data does not match the original input data.")
 
     st.subheader("Step 4: Download Display Data")
     all_exist = True
     if hourly_input_df is None:
-        st.warning("No hourly input data uploaded.")
+        st.warning("No Lung Function Hourly Data Uploaded.")
         all_exist = False
     if edema_input_df is None:
-        st.warning("No edema input data uploaded.")
+        st.warning("No Lung Edema Data Uploaded.")
         all_exist = False
     if pc_1hr_input_df is None:
-        st.warning("No Image PC 1hr input data uploaded.")
+        st.warning("No Lung X-ray 1Hr Data Uploaded.")
         all_exist = False
     if pc_3hr_input_df is None:
-        st.warning("No Image PC 3hr input data uploaded.")
+        st.warning("No Lung X-ray 3Hr Data Uploaded.")
         all_exist = False
     if protein_input_df is None:
-        st.warning("No Protein input data uploaded.")
+        st.warning("No Protein Data Uploaded.")
         all_exist = False
     if cit1_input_df is None:
-        st.warning("No Transcriptomics cit1 input data uploaded.")
+        st.warning("No Transcriptomics Baseline Data Uploaded.")
         all_exist = False
     if cit2_input_df is None:
-        st.warning("No Transcriptomics cit2 input data uploaded.")
+        st.warning("No Transcriptomics Target Data Uploaded.")
         all_exist = False
 
     col1, col2 = st.columns(2, vertical_alignment='bottom')
