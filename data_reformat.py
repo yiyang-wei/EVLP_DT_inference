@@ -42,8 +42,8 @@ hourly_code = {v: k for k, v in hourly_name.items()}
 hourly_calculated_code = {v: k for k, v in hourly_calculated_name.items()}
 def get_hourly_display_name(colname):
     hour_prefix, feature_code = colname.split("_", 1)
-    feature_name = hourly_name.get(feature_code, feature_code)
-    timestamp_name = hourly_order.get(hour_prefix, hour_prefix)
+    feature_name = hourly_name.get(feature_code)
+    timestamp_name = hourly_order.get(hour_prefix)
     return feature_name, timestamp_name
 def get_hourly_input_name(display_name, timestamp):
     if display_name in hourly_code:
@@ -78,7 +78,7 @@ image_pc_name = {
 image_pc_code = {v: k for k, v in image_pc_name.items()}
 def get_image_pc_display_name(colname):
     feature_code = colname.replace("feature_", "")
-    feature_name = image_pc_name.get(feature_code, feature_code)
+    feature_name = image_pc_name.get(feature_code)
     return feature_name
 def get_image_pc_input_name(display_name):
     if display_name in image_pc_code:
@@ -112,8 +112,8 @@ protein_code = {v: k for k, v in protein_name.items()}
 protein_slope_order_reversed = {v: k for k, v in protein_slope_order.items()}
 def get_protein_display_name(colname):
     protein_prefix, feature_code = colname.split("_", 1)
-    feature_name = protein_name.get(feature_code, feature_code)
-    timestamp_name = protein_order.get(int(protein_prefix), protein_prefix)
+    feature_name = protein_name.get(feature_code)
+    timestamp_name = protein_order.get(int(protein_prefix))
     return feature_name, timestamp_name
 def get_protein_input_name(display_name, timestamp):
     if display_name in protein_code:
@@ -239,9 +239,9 @@ def hourly_input_to_display(hourly_input_one_case, emeda_input_one_case):
     prefixes = list(hourly_order.values())
     hourly_display_one_case = pd.DataFrame(index=features, columns=prefixes)
     for code in combined_input_one_case.index:
-        if "Delta" in code:
-            continue
         name, timestamp = get_hourly_display_name(code)
+        if name is None or timestamp is None:
+            continue
         hourly_display_one_case.loc[name, timestamp] = combined_input_one_case[code]
     return hourly_display_one_case
 
@@ -290,6 +290,8 @@ def protein_input_to_display(protein_input_one_case):
         if "slope" in code:
             continue
         name, timestamp = get_protein_display_name(code)
+        if name is None or timestamp is None:
+            continue
         protein_case.loc[name, timestamp] = protein_input_one_case[code]
     return protein_case
 
@@ -328,6 +330,8 @@ def transcriptomics_input_to_display(transcriptomics_input_x_one_case, transcrip
     transcriptomics_case = pd.DataFrame()
     for col in combined_transcriptomics.index:
         feature_name, timestamp = get_transcriptomics_display_name(col)
+        if feature_name is None or timestamp is None:
+            continue
         transcriptomics_case.loc[feature_name, timestamp] = combined_transcriptomics[col]
     return transcriptomics_case
 
@@ -353,6 +357,30 @@ def time_series_input_to_display(time_series_input_one_case: pd.DataFrame):
         param = sp[6:]
         ts_dfs[h][per_breath_name[param]] = row[breath_cols].values
     return ts_dfs
+
+
+def compare_series_mismatches(
+        s1: pd.Series,
+        s2: pd.Series,
+        ignore_type: bool = True,
+        s1_name: str = "s1",
+        s2_name: str = "s2"
+) -> pd.DataFrame | None:
+    s1_aligned, s2_aligned = s1.align(s2)
+    if ignore_type:
+        s1_comp = s1_aligned.astype(float)
+        s2_comp = s2_aligned.astype(float)
+    else:
+        s1_comp = s1_aligned
+        s2_comp = s2_aligned
+    mismatch_mask = ~(s1_comp.eq(s2_comp) | (s1_comp.isna() & s2_comp.isna()))
+    if mismatch_mask.any():
+        return pd.DataFrame({
+            s1_name: s1_aligned[mismatch_mask],
+            s2_name: s2_aligned[mismatch_mask]
+        })
+    else:
+        return None
 
 
 def main():
@@ -542,50 +570,92 @@ def main():
         hourly_with_calculated_display_df = pd.concat([hourly_display_df, hourly_calculated_delta], axis=0)
         hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)], index=[selected_case_id])
         hourly_model_input_tab.dataframe(hourly_model_input_df)
-        if np.allclose(hourly_model_input_df.loc[selected_case_id, hourly_input_df.columns], hourly_input_df.loc[selected_case_id]):
+        hourly_mismatches = compare_series_mismatches(
+            hourly_model_input_df.loc[selected_case_id, hourly_input_df.columns],
+            hourly_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if hourly_mismatches is None:
             hourly_model_input_tab.success("Reverted Lung Function Hourly Data matches the original input data.")
         else:
             hourly_model_input_tab.error("Reverted Lung Function Hourly Data does not match the original input data.")
-        if np.allclose(hourly_model_input_df.loc[selected_case_id, edema_input_df.columns], edema_input_df.loc[selected_case_id]):
+            hourly_model_input_tab.dataframe(hourly_mismatches, use_container_width=True)
+        edema_mismatches = compare_series_mismatches(
+            hourly_model_input_df.loc[selected_case_id, edema_input_df.columns],
+            edema_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if edema_mismatches is None:
             hourly_model_input_tab.success("Reverted Lung Edema Data matches the original input data.")
         else:
             hourly_model_input_tab.error("Reverted Lung Edema Data does not match the original input data.")
+            hourly_model_input_tab.dataframe(edema_mismatches, use_container_width=True)
     if pc_display_df is not None:
         pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(pc_display_df)
         pc_model_input_h1_df = pd.DataFrame([pc_model_input_h1_df], index=[selected_case_id])
         pc_model_input_h3_df = pd.DataFrame([pc_model_input_h3_df], index=[selected_case_id])
         pc_model_input_tab.dataframe(pc_model_input_h1_df, use_container_width=True)
         pc_model_input_tab.dataframe(pc_model_input_h3_df, use_container_width=True)
-        if np.allclose(pc_model_input_h1_df.loc[selected_case_id, pc_1hr_input_df.columns], pc_1hr_input_df.loc[selected_case_id]):
+        pc_h1_mismatches = compare_series_mismatches(
+            pc_model_input_h1_df.loc[selected_case_id, pc_1hr_input_df.columns],
+            pc_1hr_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if pc_h1_mismatches is None:
             pc_model_input_tab.success("Reverted Lung X-ray 1Hr Data matches the original input data.")
         else:
             pc_model_input_tab.error("Reverted Lung X-ray 1Hr Data does not match the original input data.")
-        if np.allclose(pc_model_input_h3_df.loc[selected_case_id, pc_3hr_input_df.columns], pc_3hr_input_df.loc[selected_case_id]):
+            pc_model_input_tab.dataframe(pc_h1_mismatches, use_container_width=True)
+        pc_h3_mismatches = compare_series_mismatches(
+            pc_model_input_h3_df.loc[selected_case_id, pc_3hr_input_df.columns],
+            pc_3hr_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if pc_h3_mismatches is None:
             pc_model_input_tab.success("Reverted Lung X-ray 3Hr Data matches the original input data.")
         else:
             pc_model_input_tab.error("Reverted Lung X-ray 3Hr Data does not match the original input data.")
+            pc_model_input_tab.dataframe(pc_h3_mismatches, use_container_width=True)
 
     if protein_display_df is not None:
         protein_model_input_df = pd.DataFrame([protein_display_to_input(protein_display_df)], index=[selected_case_id])
         protein_slope_input_df = pd.DataFrame([protein_slope_display_to_input(protein_slope_df)], index=[selected_case_id])
         protein_with_slope_model_input_df = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
         protein_model_input_tab.dataframe(protein_with_slope_model_input_df, use_container_width=True)
-        if np.allclose(protein_with_slope_model_input_df.loc[selected_case_id, protein_input_df.columns], protein_input_df.loc[selected_case_id]):
+        protein_mismatches = compare_series_mismatches(
+            protein_with_slope_model_input_df.loc[selected_case_id, protein_input_df.columns],
+            protein_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if protein_mismatches is None:
             protein_model_input_tab.success("Reverted Protein Data matches the original input data.")
         else:
             protein_model_input_tab.error("Reverted Protein Data does not match the original input data.")
+            protein_model_input_tab.dataframe(protein_mismatches, use_container_width=True)
 
     if transcriptomics_display_df is not None:
         transcriptomics_model_input_df = pd.DataFrame([transcriptomics_display_to_input(transcriptomics_display_df)], index=[selected_case_id])
         cit_model_input_tab.dataframe(transcriptomics_model_input_df, use_container_width=True)
-        if np.allclose(transcriptomics_model_input_df.loc[selected_case_id, cit1_input_df.columns], cit1_input_df.loc[selected_case_id]):
+        cit1_mismatches = compare_series_mismatches(
+            transcriptomics_model_input_df.loc[selected_case_id, cit1_input_df.columns],
+            cit1_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if cit1_mismatches is None:
             cit_model_input_tab.success("Reverted Transcriptomics Baseline Data matches the original input data.")
         else:
             cit_model_input_tab.error("Reverted Transcriptomics Baseline Data does not match the original input data.")
-        if np.allclose(transcriptomics_model_input_df.loc[selected_case_id, cit2_input_df.columns], cit2_input_df.loc[selected_case_id]):
+            cit_model_input_tab.dataframe(cit1_mismatches, use_container_width=True)
+        cit2_mismatches = compare_series_mismatches(
+            transcriptomics_model_input_df.loc[selected_case_id, cit2_input_df.columns],
+            cit2_input_df.loc[selected_case_id],
+            s1_name="Converted Data", s2_name="Original Data",
+        )
+        if cit2_mismatches is None:
             cit_model_input_tab.success("Reverted Transcriptomics Target Data matches the original input data.")
         else:
             cit_model_input_tab.error("Reverted Transcriptomics Target Data does not match the original input data.")
+            cit_model_input_tab.dataframe(cit2_mismatches, use_container_width=True)
 
     st.subheader("Step 4: Download Display Data")
     all_exist = True
