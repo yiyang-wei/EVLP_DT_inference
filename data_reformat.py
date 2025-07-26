@@ -14,12 +14,10 @@ hourly_order_reversed = {v: k for k, v in hourly_order.items()}
 hourly_name = {
     'pMean': 'Mean Airway Pressure (cmH₂O)',
     'PAP': 'Pulmonary Arterial Pressure (mmHg)',
-    'Delta PO2': 'Delta PO₂ (mmHg)',
     'LA Ca++': 'Calcium (mmol/L)',
     'LA PCO2': 'Arterial Partial Pressure CO₂ (mmHg)',
     'LA HCO3': 'Bicarbonate (mmol/L)',
     'LAP': 'Left Atrial Pressure (mmHg)',
-    'Calc Delta PCO2': 'Delta PCO₂ (mmHg)',
     'LA BE': 'Base Excess (mmol/L)',
     'LA K+': 'Potassium (mmol/L)',
     'pPlat': 'Plateau Airway Pressure (cmH₂O)',
@@ -36,7 +34,12 @@ hourly_name = {
     'PA PO2': 'Venous Partial Pressure O₂ (mmHg)',
     'STEEN lost': 'Edema (mL)',
 }
+hourly_calculated_name = {
+    'Delta PO2': 'Delta PO₂ (mmHg)',
+    'Calc Delta PCO2': 'Delta PCO₂ (mmHg)',
+}
 hourly_code = {v: k for k, v in hourly_name.items()}
+hourly_calculated_code = {v: k for k, v in hourly_calculated_name.items()}
 def get_hourly_display_name(colname):
     hour_prefix, feature_code = colname.split("_", 1)
     feature_name = hourly_name.get(feature_code, feature_code)
@@ -45,6 +48,8 @@ def get_hourly_display_name(colname):
 def get_hourly_input_name(display_name, timestamp):
     if display_name in hourly_code:
         feature_code = hourly_code[display_name]
+    elif display_name in hourly_calculated_code:
+        feature_code = hourly_calculated_code[display_name]
     else:
         raise KeyError(f"Display name '{display_name}' not found in hourly display name to input name mapping.")
     if timestamp in hourly_order_reversed:
@@ -234,9 +239,22 @@ def hourly_input_to_display(hourly_input_one_case, emeda_input_one_case):
     prefixes = list(hourly_order.values())
     hourly_display_one_case = pd.DataFrame(index=features, columns=prefixes)
     for code in combined_input_one_case.index:
+        if "Delta" in code:
+            continue
         name, timestamp = get_hourly_display_name(code)
         hourly_display_one_case.loc[name, timestamp] = combined_input_one_case[code]
     return hourly_display_one_case
+
+def hourly_calculate_delta(hourly_display_one_case):
+    hourly_calculated_delta = pd.DataFrame(
+        index=[hourly_calculated_name['Delta PO2'], hourly_calculated_name['Calc Delta PCO2']],
+        columns=hourly_display_one_case.columns,
+    )
+    delta_po2 = hourly_display_one_case.loc[hourly_name['LA PO2']] - hourly_display_one_case.loc[hourly_name['PA PO2']]
+    delta_pco2 = hourly_display_one_case.loc[hourly_name['LA PCO2']] - hourly_display_one_case.loc[hourly_name['PA PCO2']]
+    hourly_calculated_delta.loc[hourly_calculated_name['Delta PO2']] = delta_po2
+    hourly_calculated_delta.loc[hourly_calculated_name['Calc Delta PCO2']] = delta_pco2
+    return hourly_calculated_delta
 
 def hourly_display_to_input(hourly_display_one_case):
     hourly_input_one_case = pd.Series()
@@ -468,6 +486,8 @@ def main():
     if hourly_input_df is not None and edema_input_df is not None:
         hourly_display_df = hourly_input_to_display(hourly_input_df.loc[selected_case_id], edema_input_df.loc[selected_case_id])
         hourly_display_tab.dataframe(hourly_display_df, use_container_width=True)
+        hourly_calculated_delta = hourly_calculate_delta(hourly_display_df)
+        hourly_display_tab.dataframe(hourly_calculated_delta, use_container_width=True)
 
     if pc_1hr_input_df is None:
         pc_display_tab.warning("No Lung X-ray 1Hr Data Uploaded.")
@@ -519,7 +539,8 @@ def main():
         "Transcriptomics Data",
     ])
     if hourly_display_df is not None:
-        hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_display_df)], index=[selected_case_id])
+        hourly_with_calculated_display_df = pd.concat([hourly_display_df, hourly_calculated_delta], axis=0)
+        hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)], index=[selected_case_id])
         hourly_model_input_tab.dataframe(hourly_model_input_df)
         if np.allclose(hourly_model_input_df.loc[selected_case_id, hourly_input_df.columns], hourly_input_df.loc[selected_case_id]):
             hourly_model_input_tab.success("Reverted Lung Function Hourly Data matches the original input data.")
