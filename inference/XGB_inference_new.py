@@ -1,4 +1,5 @@
-import pathlib
+from pathlib import Path
+import numpy as np
 import pandas as pd
 import pickle
 
@@ -22,16 +23,149 @@ def predict_with_model(folder, data):
     predicted_Y = pd.DataFrame(param_preds, index=data.index)
     return predicted_Y
 
-def save_results(save_folder, predicted_Y, true_Y):
+def save_results(save_folder, predicted_Y, true_Y=None):
     save_folder.mkdir(parents=True, exist_ok=True)
     predicted_Y.to_csv(save_folder / "predicted_Y.csv", index=True)
-    true_Y.to_csv(save_folder / "true_Y.csv", index=True)
+    if true_Y is not None:
+        true_Y.to_csv(save_folder / "true_Y.csv", index=True)
+
+
+class XGBInference:
+
+    def __init__(self, model_folder):
+        self.model_folder = Path(model_folder)
+        self.hourly_model_folder = self.model_folder / "XGB" / "Hourly"
+        self.protein_model_folder = self.model_folder / "XGB" / "Protein"
+        self.transcriptomics_model_folder = self.model_folder / "XGB" / "Transcriptomics"
+        self.image_pc_model_folder = self.model_folder / "XGB_PC"
+
+        self.hourly_input_data = None
+        self.protein_input_data = None
+        self.pc_1h_input_data = None
+        self.pc_3h_input_data = None
+        self.transcriptomics_input_data = None
+
+        self.hourly_pred_h2 = None
+        self.hourly_h1_pred_h2 = None
+        self.hourly_pred_h3_static = None
+        self.hourly_pred_h3_dynamic = None
+
+        self.protein_pred_h2 = None
+        self.protein_pred_h3_static = None
+        self.protein_pred_h3_dynamic = None
+
+        self.transcriptomics_pred_static = None
+        self.transcriptomics_pred_dynamic = None
+
+        self.pc_pred_static = None
+        self.pc_pred_dynamic = None
+
+
+    def hourly_dynamic_inference(self):
+        hourly_h1_h2_to_h3_model_folder = self.hourly_model_folder / "H1_H2_to_H3"
+        self.hourly_pred_h3_dynamic = predict_with_model(hourly_h1_h2_to_h3_model_folder, self.hourly_input_data)
+        return self.hourly_pred_h3_dynamic
+
+    def hourly_static_inference(self):
+        hourly_h1_to_h2_model_folder = self.hourly_model_folder / "H1_to_H2"
+        hourly_h1_h2_to_h3_model_folder = self.hourly_model_folder / "H1_H2_to_H3"
+        hourly_h1 = self.hourly_input_data.loc[:, self.hourly_input_data.columns.str.startswith("70_")]
+        self.hourly_pred_h2 = predict_with_model(hourly_h1_to_h2_model_folder, self.hourly_input_data)
+        self.hourly_h1_pred_h2 = pd.concat([hourly_h1, self.hourly_pred_h2], axis=1)
+        self.hourly_pred_h3_static = predict_with_model(hourly_h1_h2_to_h3_model_folder, self.hourly_h1_pred_h2)
+        return self.hourly_pred_h2, self.hourly_pred_h3_static
+
+    def protein_dynamic_inference(self):
+        protein_h1_h2_to_h3_model_folder = self.protein_model_folder / "H1_H2_to_H3"
+        protein_dynamic_input = pd.concat([self.protein_input_data, self.hourly_input_data, self.pc_1h_input_data], axis=1)
+        self.protein_pred_h3_dynamic = predict_with_model(protein_h1_h2_to_h3_model_folder, protein_dynamic_input)
+        return self.protein_pred_h3_dynamic
+
+    def protein_static_inference(self):
+        protein_h1_to_h2_model_folder = self.protein_model_folder / "H1_to_H2"
+        protein_h1_pred_h2_to_h3_model_folder = self.protein_model_folder / "H1_pred_H2_to_H3"
+        protein_static_input = pd.concat([self.protein_input_data, self.hourly_h1_pred_h2, self.pc_1h_input_data], axis=1)
+        self.protein_pred_h2 = predict_with_model(protein_h1_to_h2_model_folder, protein_static_input)
+        self.protein_pred_h3_static = predict_with_model(protein_h1_pred_h2_to_h3_model_folder, protein_static_input)
+        return self.protein_pred_h2, self.protein_pred_h3_static
+
+    def transcriptomics_dynamic_inference(self):
+        transcriptomics_dynamic_model_folder = self.transcriptomics_model_folder / "dynamic_forecasting"
+        pc_1h_input_data = self.pc_1h_input_data.add_suffix("_x")
+        pc_3h_input_data = self.pc_3h_input_data.add_suffix("_y")
+        transcriptomics_dynamic_input = pd.concat([self.transcriptomics_input_data, self.hourly_input_data, pc_1h_input_data, pc_3h_input_data], axis=1)
+        self.transcriptomics_pred_dynamic = predict_with_model(transcriptomics_dynamic_model_folder, transcriptomics_dynamic_input)
+        return self.transcriptomics_pred_dynamic
+
+    def transcriptomics_static_inference(self):
+        transcriptomics_static_model_folder = self.transcriptomics_model_folder / "static_forecasting"
+        pc_1h_input_data = self.pc_1h_input_data.add_suffix("_x")
+        pc_3h_pred_static = self.pc_pred_static.add_suffix("_predictions")
+        transcriptomics_static_input = pd.concat([self.transcriptomics_input_data, self.hourly_h1_pred_h2, self.hourly_pred_h3_static, pc_1h_input_data, pc_3h_pred_static], axis=1)
+        self.transcriptomics_pred_static = predict_with_model(transcriptomics_static_model_folder, transcriptomics_static_input)
+        return self.transcriptomics_pred_static
+
+    def image_pc_dynamic_inference(self):
+        feat_dir = self.image_pc_model_folder / 'results_true_hyper'
+        model_dir = self.image_pc_model_folder / 'models_true'
+
+        tab_data_df = self.hourly_input_data.copy()
+        image_pc1h = self.pc_1h_input_data.add_prefix("1h_")
+        image_pc3h = self.pc_3h_input_data.add_prefix("3h_")
+        merged_df = pd.concat([tab_data_df, image_pc1h, image_pc3h], axis=1)
+
+        y_columns = [f'3h_feature_pca_{i}' for i in range(10)]
+        preds = pd.DataFrame(columns=y_columns)
+        for col_name in y_columns:
+            pca_num = int(col_name.replace('3h_feature_pca_', ''))
+            features_path = feat_dir / f'top_features_pca_{pca_num}.txt'
+            with open(features_path, 'r') as f:
+                features = f.read().splitlines()
+
+            X_test = merged_df[features].values
+
+            with open(model_dir / f'{col_name}_model.pkl', 'rb') as file:
+                pipeline = pickle.load(file)
+
+            y_pred = pipeline.predict(X_test)
+            preds[col_name] = y_pred
+
+        self.pc_pred_dynamic = preds
+        self.pc_pred_dynamic.index = self.pc_1h_input_data.index
+        return self.pc_pred_dynamic
+
+    def image_pc_static_inference(self):
+        feat_dir = self.image_pc_model_folder / 'results_true_hyper'
+        model_dir = self.image_pc_model_folder / 'models_pred'
+
+        image_pc1h = self.pc_1h_input_data.add_prefix("1h_")
+        image_pc3h = self.pc_3h_input_data.add_prefix("3h_")
+        merged_df = pd.concat([self.hourly_h1_pred_h2, image_pc1h, image_pc3h], axis=1)
+
+        y_columns = [f'3h_feature_pca_{i}' for i in range(10)]
+        preds = pd.DataFrame(columns=y_columns)
+        for col_name in y_columns:
+            pca_num = int(col_name.replace('3h_feature_pca_', ''))
+            features_path = feat_dir / f'top_features_pca_{pca_num}.txt'
+            with open(features_path, 'r') as f:
+                features = f.read().splitlines()
+
+            X_test = merged_df[features].values
+
+            with open(model_dir / f'{col_name}_model.pkl', 'rb') as file:
+                pipeline = pickle.load(file)
+
+            y_pred = pipeline.predict(X_test)
+            preds[col_name] = y_pred
+        self.pc_pred_static = preds
+        self.pc_pred_static.index = self.pc_1h_input_data.index
+        return self.pc_pred_static
 
 def hourly_inferences_step_1(model_folder, data_folder, output_folder):
 
-    model_folder = pathlib.Path(model_folder)
-    data_folder = pathlib.Path(data_folder)
-    output_folder = pathlib.Path(output_folder)
+    model_folder = Path(model_folder)
+    data_folder = Path(data_folder)
+    output_folder = Path(output_folder)
 
     # Saved model folders (input folders)
     hourly_model_folder = model_folder / "XGB" / "Hourly"
@@ -69,14 +203,10 @@ def hourly_inferences_step_1(model_folder, data_folder, output_folder):
     # h1 + pred_h2 to h3 inference
     hourly_h1 = new_hourly_data.loc[:, new_hourly_data.columns.str.startswith("70_")]
     pred_hourly_h2 = pd.read_csv(hourly_save_folder / "H1_to_H2" / f"predicted_Y.csv", index_col=0)
-    pred_steen_h2 = pd.read_csv(hourly_save_folder / "STEEN_H1_to_H2_H3" / f"predicted_Y.csv", index_col=0)
     true_hourly_h3 = pd.read_csv(hourly_save_folder / "H1_H2_to_H3" / "true_Y.csv", index_col=0)
-    true_steen_h3 = pd.read_csv(hourly_save_folder / "STEEN_H1_H2_to_H3" / "true_Y.csv", index_col=0)
-    hourly_h1_pred_h2 = pd.concat([hourly_h1, pred_hourly_h2, pred_steen_h2], axis=1)
+    hourly_h1_pred_h2 = pd.concat([hourly_h1, pred_hourly_h2], axis=1)
     pred_h1_h2_to_h3 = predict_with_model(hourly_model_folder / "H1_H2_to_H3", hourly_h1_pred_h2)
     save_results(hourly_save_folder / "H1_pred_H2_to_H3", pred_h1_h2_to_h3, true_hourly_h3)
-    pred_steen_h1_h2_to_h3 = predict_with_model(hourly_model_folder / "STEEN_H1_H2_to_H3", hourly_h1_pred_h2)
-    save_results(hourly_save_folder / "STEEN_H1_pred_H2_to_H3", pred_steen_h1_h2_to_h3, true_steen_h3)
 
 
     # Protein dynamic inference
@@ -112,9 +242,9 @@ def hourly_inferences_step_1(model_folder, data_folder, output_folder):
     save_results(transcriptomics_save_folder / transcriptomics_setup.name, predicted_Y, true_Y)
 
 def hourly_inferences_step_2(model_folder, data_folder, output_folder):
-    model_folder = pathlib.Path(model_folder)
-    data_folder = pathlib.Path(data_folder)
-    output_folder = pathlib.Path(output_folder)
+    model_folder = Path(model_folder)
+    data_folder = Path(data_folder)
+    output_folder = Path(output_folder)
 
     # Saved model folders (input folders)
     transcriptomics_model_folder = model_folder / "XGB" / "Transcriptomics"
@@ -161,8 +291,8 @@ def hourly_inferences_step_2(model_folder, data_folder, output_folder):
 
 
 if __name__ == "__main__":
-    Model_folder = pathlib.Path("../Model")
-    Data_folder = pathlib.Path("../Data")
-    Output_folder = pathlib.Path("../Output")
+    Model_folder = Path("../Model")
+    Data_folder = Path("../Data")
+    Output_folder = Path("../Output")
     hourly_inferences_step_1(Model_folder, Data_folder, Output_folder)
     # hourly_inferences_step_2(Model_folder, Data_folder, Output_folder)
