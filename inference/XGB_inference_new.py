@@ -204,29 +204,29 @@ class XGBInference:
         hourly_pred_h3_static_display = hourly_input_to_display(self.hourly_pred_h3_static.iloc[0])
         hourly_pred_h3_dynamic_display = hourly_input_to_display(self.hourly_pred_h3_dynamic.iloc[0])
         hourly_predictions_display = self.hourly_display_df[["2nd Hour", "3rd Hour"]].add_prefix("Observed ")
-        hourly_predictions_display["Predicted 2nd Hour"] = hourly_pred_h2_display["2nd Hour"]
-        hourly_predictions_display["Static Predicted 3rd Hour"] = hourly_pred_h3_static_display["3rd Hour"]
-        hourly_predictions_display["Dynamic Predicted 3rd Hour"] = hourly_pred_h3_dynamic_display["3rd Hour"]
+        hourly_predictions_display["Predicted 2nd Hour"] = hourly_pred_h2_display["2nd Hour"].astype(float).round(1)
+        hourly_predictions_display["Static Predicted 3rd Hour"] = hourly_pred_h3_static_display["3rd Hour"].astype(float).round(1)
+        hourly_predictions_display["Dynamic Predicted 3rd Hour"] = hourly_pred_h3_dynamic_display["3rd Hour"].astype(float).round(1)
 
         image_pc_pred_static_display = image_pc_input_to_display(None, self.pc_pred_static.iloc[0])
         image_pc_pred_dynamic_display = image_pc_input_to_display(None, self.pc_pred_dynamic.iloc[0])
         image_pc_predictions_display = self.image_pc_display_df[["3rd Hour"]].add_prefix("Observed ")
-        image_pc_predictions_display["Static Predicted 3rd Hour"] = image_pc_pred_static_display["3rd Hour"]
-        image_pc_predictions_display["Dynamic Predicted 3rd Hour"] = image_pc_pred_dynamic_display["3rd Hour"]
+        image_pc_predictions_display["Static Predicted 3rd Hour"] = image_pc_pred_static_display["3rd Hour"].astype(float)
+        image_pc_predictions_display["Dynamic Predicted 3rd Hour"] = image_pc_pred_dynamic_display["3rd Hour"].astype(float)
 
         protein_pred_h2_display = protein_input_to_display(self.protein_pred_h2.iloc[0])
         protein_pred_h3_static_display = protein_input_to_display(self.protein_pred_h3_static.iloc[0])
         protein_pred_h3_dynamic_display = protein_input_to_display(self.protein_pred_h3_dynamic.iloc[0])
         protein_predictions_display = self.protein_display_df[["2nd Hour", "3rd Hour"]].add_prefix("Observed ")
-        protein_predictions_display["Predicted 2nd Hour"] = protein_pred_h2_display["2nd Hour"]
-        protein_predictions_display["Static Predicted 3rd Hour"] = protein_pred_h3_static_display["3rd Hour"]
-        protein_predictions_display["Dynamic Predicted 3rd Hour"] = protein_pred_h3_dynamic_display["3rd Hour"]
+        protein_predictions_display["Predicted 2nd Hour"] = protein_pred_h2_display["2nd Hour"].astype(float).round(1)
+        protein_predictions_display["Static Predicted 3rd Hour"] = protein_pred_h3_static_display["3rd Hour"].astype(float).round(1)
+        protein_predictions_display["Dynamic Predicted 3rd Hour"] = protein_pred_h3_dynamic_display["3rd Hour"].astype(float).round(1)
 
         transcriptomics_pred_static_display = transcriptomics_input_to_display(self.transcriptomics_pred_static.iloc[0])
         transcriptomics_pred_dynamic_display = transcriptomics_input_to_display(self.transcriptomics_pred_dynamic.iloc[0])
         transcriptomics_predictions_display = self.transcriptomics_display_df[["Target"]].add_prefix("Observed ")
-        transcriptomics_predictions_display["Static Predicted Target"] = transcriptomics_pred_static_display["Target"]
-        transcriptomics_predictions_display["Dynamic Predicted Target"] = transcriptomics_pred_dynamic_display["Target"]
+        transcriptomics_predictions_display["Static Predicted Target"] = transcriptomics_pred_static_display["Target"].astype(int)
+        transcriptomics_predictions_display["Dynamic Predicted Target"] = transcriptomics_pred_dynamic_display["Target"].astype(int)
 
         self.predictions_display = {
             "Hourly Lung Function Predictions": hourly_predictions_display,
