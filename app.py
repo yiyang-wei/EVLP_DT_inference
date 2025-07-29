@@ -161,10 +161,10 @@ def main():
             "Transcriptomics Predictions"
         ])
 
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Predictions"])
-        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Predictions"])
-        protein_pred_tab.dataframe(predictions_display["Protein Predictions"])
-        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Predictions"])
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"])
+        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
+        protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
+        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
 
         saved_predictions = load_excel_binary(prediction_save_path)
 

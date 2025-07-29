@@ -74,7 +74,7 @@ def hourly_input_to_display(hourly_input_one_case, emeda_input_one_case=None):
         combined_input_one_case = pd.concat([hourly_input_one_case, emeda_input_one_case])
     features = list(hourly_name.values())
     prefixes = list(hourly_order.values())
-    hourly_display_one_case = pd.DataFrame(index=features, columns=prefixes)
+    hourly_display_one_case = pd.DataFrame(index=features, columns=prefixes, dtype=float)
     for code in combined_input_one_case.index:
         name, timestamp = get_hourly_display_name(code)
         if name is None or timestamp is None:
@@ -148,7 +148,7 @@ def get_image_pc_input_name(display_name, timestamp=None):
 def image_pc_input_to_display(pc_1h_input_one_case=None, pc_3h_input_one_case=None):
     features = list(image_pc_name.values())
     timestamps = list(image_pc_order.values())
-    pc_case = pd.DataFrame(index=features, columns=timestamps)
+    pc_case = pd.DataFrame(index=features, columns=timestamps, dtype=float)
     if pc_1h_input_one_case is not None:
         for code in pc_1h_input_one_case.index:
             name, timestamp = get_image_pc_display_name(code)
@@ -224,7 +224,7 @@ def get_protein_slope_input_name(display_name, timestamp):
 def protein_input_to_display(protein_input_one_case):
     features = list(protein_name.values())
     timestamps = list(protein_order.values())
-    protein_case = pd.DataFrame(index=features, columns=timestamps)
+    protein_case = pd.DataFrame(index=features, columns=timestamps, dtype=float)
     for code in protein_input_one_case.index:
         if "slope" in code:
             continue
@@ -237,7 +237,9 @@ def protein_input_to_display(protein_input_one_case):
 def calculate_protein_slopes(protein_input_one_case):
     protein_slope_case = pd.DataFrame(
         index=protein_input_one_case.index,
-        columns=list(protein_slope_order.values()))
+        columns=list(protein_slope_order.values()),
+        dtype=float
+    )
     timestamps = list(protein_order.keys())
     for feature in protein_input_one_case.index:
         for slope_code, slope_name in protein_slope_order.items():
