@@ -177,10 +177,10 @@ def main():
     else:
         st.warning("No predictions available to view. Please run the inference first.")
 
+    st.subheader("Step 4: Download Predictions")
     if prediction_save_path.exists():
         saved_predictions = load_excel_binary(prediction_save_path)
 
-        st.subheader("Step 4: Download Predictions")
         st.download_button(
             label="Download Predictions",
             data=saved_predictions,
