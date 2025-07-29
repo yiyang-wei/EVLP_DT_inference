@@ -9,8 +9,14 @@ from huggingface_hub import snapshot_download
 
 
 @st.cache_data
-def load_data(file_path):
+def load_excel(file_path):
     return pd.read_excel(file_path, sheet_name=None, index_col=0)
+
+@st.cache_data
+def load_excel_binary(file_path):
+    with open(file_path, "rb") as f:
+        return f.read()
+
 
 def download_huggingface(data_folder, model_folder):
     model_repo_id = "SageLabUHN/DT_Lung"
@@ -24,31 +30,10 @@ def download_huggingface(data_folder, model_folder):
 
 @st.cache_resource
 def run_xgb_inference(model_folder, demo_dfs):
-    hourly_calculated_delta = hourly_calculate_delta(demo_dfs[hourly_lung_function_sheet])
-    hourly_with_calculated_display_df = pd.concat([demo_dfs[hourly_lung_function_sheet], hourly_calculated_delta], axis=0)
-    hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)])
-    pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(demo_dfs[lung_image_sheet])
-    pc_model_input_h1_df = pd.DataFrame([pc_model_input_h1_df])
-    pc_model_input_h3_df = pd.DataFrame([pc_model_input_h3_df])
-    protein_slope_df = calculate_protein_slopes(demo_dfs[protein_sheet])
-    protein_model_input_df = pd.DataFrame([protein_display_to_input(demo_dfs[protein_sheet])])
-    protein_slope_input_df = pd.DataFrame([protein_slope_display_to_input(protein_slope_df)])
-    protein_with_slope_model_input_df = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
-    transcriptomics_model_input_df = pd.DataFrame([transcriptomics_display_to_input(demo_dfs[transcriptomics_sheet])])
     xgb_inference = XGBInference(model_folder)
-    xgb_inference.hourly_input_data = hourly_model_input_df
-    xgb_inference.pc_1h_input_data = pc_model_input_h1_df
-    xgb_inference.pc_3h_input_data = pc_model_input_h3_df
-    xgb_inference.protein_input_data = protein_with_slope_model_input_df
-    xgb_inference.transcriptomics_input_data = transcriptomics_model_input_df
-    xgb_inference.hourly_dynamic_inference()
-    xgb_inference.hourly_static_inference()
-    xgb_inference.image_pc_dynamic_inference()
-    xgb_inference.image_pc_static_inference()
-    xgb_inference.protein_dynamic_inference()
-    xgb_inference.protein_static_inference()
-    xgb_inference.transcriptomics_dynamic_inference()
-    xgb_inference.transcriptomics_dynamic_inference()
+    xgb_inference.load_input_data(demo_dfs)
+    xgb_inference.run()
+    xgb_inference.get_pred_display()
     return xgb_inference
 
 
@@ -63,15 +48,19 @@ def main():
 
     data_folder = pathlib.Path("Data")
     model_folder = pathlib.Path("Model")
+    output_folder = pathlib.Path("Output")
+    output_folder.mkdir(parents=True, exist_ok=True)
 
     demo_case_prefix = "DT Lung Demo Case "
 
-    st.title(":material/respiratory_rate: Ex-Vivo Lung Perfusion Digital Twin")
+    st.title(":material/respiratory_rate: Digital Twin of Ex-Vivo Human Lungs ")
 
     st.subheader("Step 0: Download Models and Data")
 
     if not data_folder.exists() or not model_folder.exists():
         download_huggingface(data_folder, model_folder)
+    else:
+        st.success("Models and data already downloaded. You can redownload them if needed.")
 
     redownload_huggingface = st.button(
         label="Redownload Models and Data",
@@ -97,7 +86,7 @@ def main():
     )
     selected_demo_id = int(selected_demo_case.replace(demo_case_prefix, ""))
 
-    demo_dfs = load_data(data_folder / f"{selected_demo_case}.xlsx")
+    demo_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
     hourly_display_df = demo_dfs[hourly_lung_function_sheet]
     image_pc_display_df = demo_dfs[lung_image_sheet]
     protein_display_df = demo_dfs[protein_sheet]
@@ -134,9 +123,15 @@ def main():
         time_series_a2_display_tab.dataframe(time_series_display_dfs[1])
         time_series_a3_display_tab.dataframe(time_series_display_dfs[2])
 
-
-
     st.subheader("Step 2: Run Inference")
+
+    prediction_save_path = output_folder / f"{selected_demo_case} predictions.xlsx"
+
+    predictions_display = None
+    if prediction_save_path.exists():
+        st.info(f"Predictions for {selected_demo_case} already exist. You can view the results below or re-run the inference.")
+        predictions_display = load_excel(prediction_save_path)
+
     run_inference = st.button(
         label="Run Inference",
         icon=":material/play_arrow:",
@@ -145,24 +140,42 @@ def main():
 
     xgb_inference = None
     if run_inference:
-        with st.spinner("Running inference..."):
-            xgb_inference = run_xgb_inference(model_folder, demo_dfs)
+        xgb_inference = run_xgb_inference(model_folder, demo_dfs)
         st.success("Inference completed successfully!")
+        with pd.ExcelWriter(prediction_save_path) as writer:
+            for sheet_name, df in xgb_inference.predictions_display.items():
+                df.to_excel(writer, sheet_name=sheet_name)
+        predictions_display = xgb_inference.predictions_display
 
     st.subheader("Step 3: View Results")
-    if xgb_inference is not None:
-        hourly_pred_h2_display = hourly_input_to_display(xgb_inference.hourly_pred_h2.iloc[0], pd.Series())
-        hourly_pred_h2_display = hourly_pred_h2_display.dropna(axis=1, how='all')
-        hourly_pred_h2_display.columns = ["Predicted 2nd Hour"]
-        hourly_pred_h2_display["Observed 2nd Hour"] = hourly_display_df["2nd Hour"]
-        hourly_pred_h3_display = hourly_input_to_display(xgb_inference.hourly_pred_h3_static.iloc[0], pd.Series())
-        hourly_pred_h3_display = hourly_pred_h3_display.dropna(axis=1, how='all')
-        hourly_pred_h3_display.columns = ["Static Predicted 3rd Hour"]
-        hourly_pred_h3_dynamic_display = hourly_input_to_display(xgb_inference.hourly_pred_h3_dynamic.iloc[0], pd.Series())
-        hourly_pred_h3_display["Dynamic Predicted 3rd Hour"] = hourly_pred_h3_dynamic_display["3rd Hour"]
-        hourly_pred_h3_display["Observed 3rd Hour"] = hourly_display_df["3rd Hour"]
-        st.dataframe(hourly_pred_h2_display)
-        st.dataframe(hourly_pred_h3_display)
+    if predictions_display is not None:
+        (
+            hourly_pred_tab,
+            image_pc_pred_tab,
+            protein_pred_tab,
+            transcriptomics_pred_tab,
+        ) = st.tabs([
+            "Hourly Lung Function Predictions",
+            "Lung X-ray Image Predictions",
+            "Protein Predictions",
+            "Transcriptomics Predictions"
+        ])
+
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Predictions"])
+        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Predictions"])
+        protein_pred_tab.dataframe(predictions_display["Protein Predictions"])
+        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Predictions"])
+
+        saved_predictions = load_excel_binary(prediction_save_path)
+
+        st.download_button(
+            label="Download Predictions",
+            data=saved_predictions,
+            file_name=f"{selected_demo_case} predictions.xlsx",
+            mime="application/vnd.ms-excel",
+            use_container_width=True
+        )
+
 
 
 if __name__ == "__main__":

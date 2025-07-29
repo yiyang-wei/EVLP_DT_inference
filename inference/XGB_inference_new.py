@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import pickle
 
+from .reformat import *
+
 
 def load_model(path):
     with open(path, "rb") as file:
@@ -39,6 +41,11 @@ class XGBInference:
         self.transcriptomics_model_folder = self.model_folder / "XGB" / "Transcriptomics"
         self.image_pc_model_folder = self.model_folder / "XGB_PC"
 
+        self.hourly_display_df = None
+        self.image_pc_display_df = None
+        self.protein_display_df = None
+        self.transcriptomics_display_df = None
+
         self.hourly_input_data = None
         self.protein_input_data = None
         self.pc_1h_input_data = None
@@ -60,6 +67,27 @@ class XGBInference:
         self.pc_pred_static = None
         self.pc_pred_dynamic = None
 
+        self.predictions_display = None
+
+    def load_input_data(self, dfs):
+        self.hourly_display_df = dfs[hourly_lung_function_sheet]
+        self.image_pc_display_df = dfs[lung_image_sheet]
+        self.protein_display_df = dfs[protein_sheet]
+        self.transcriptomics_display_df = dfs[transcriptomics_sheet]
+
+        hourly_calculated_delta = hourly_calculate_delta(self.hourly_display_df)
+        hourly_with_calculated_display_df = pd.concat([self.hourly_display_df, hourly_calculated_delta], axis=0)
+        self.hourly_input_data = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)])
+
+        pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(self.image_pc_display_df)
+        self.pc_1h_input_data = pd.DataFrame([pc_model_input_h1_df])
+        self.pc_3h_input_data = pd.DataFrame([pc_model_input_h3_df])
+
+        protein_slope_df = calculate_protein_slopes(self.protein_display_df)
+        protein_model_input_df = pd.DataFrame([protein_display_to_input(self.protein_display_df)])
+        protein_slope_input_df = pd.DataFrame([protein_slope_display_to_input(protein_slope_df)])
+        self.protein_input_data = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
+        self.transcriptomics_input_data = pd.DataFrame([transcriptomics_display_to_input(self.transcriptomics_display_df)])
 
     def hourly_dynamic_inference(self):
         hourly_h1_h2_to_h3_model_folder = self.hourly_model_folder / "H1_H2_to_H3"
@@ -160,6 +188,52 @@ class XGBInference:
         self.pc_pred_static = preds
         self.pc_pred_static.index = self.pc_1h_input_data.index
         return self.pc_pred_static
+
+    def run(self):
+        self.hourly_dynamic_inference()
+        self.hourly_static_inference()
+        self.image_pc_dynamic_inference()
+        self.image_pc_static_inference()
+        self.protein_dynamic_inference()
+        self.protein_static_inference()
+        self.transcriptomics_dynamic_inference()
+        self.transcriptomics_static_inference()
+
+    def get_pred_display(self):
+        hourly_pred_h2_display = hourly_input_to_display(self.hourly_pred_h2.iloc[0])
+        hourly_pred_h3_static_display = hourly_input_to_display(self.hourly_pred_h3_static.iloc[0])
+        hourly_pred_h3_dynamic_display = hourly_input_to_display(self.hourly_pred_h3_dynamic.iloc[0])
+        hourly_predictions_display = self.hourly_display_df[["2nd Hour", "3rd Hour"]].add_prefix("Observed ")
+        hourly_predictions_display["Predicted 2nd Hour"] = hourly_pred_h2_display["2nd Hour"]
+        hourly_predictions_display["Static Predicted 3rd Hour"] = hourly_pred_h3_static_display["3rd Hour"]
+        hourly_predictions_display["Dynamic Predicted 3rd Hour"] = hourly_pred_h3_dynamic_display["3rd Hour"]
+
+        image_pc_pred_static_display = image_pc_input_to_display(None, self.pc_pred_static.iloc[0])
+        image_pc_pred_dynamic_display = image_pc_input_to_display(None, self.pc_pred_dynamic.iloc[0])
+        image_pc_predictions_display = self.image_pc_display_df[["3rd Hour"]].add_prefix("Observed ")
+        image_pc_predictions_display["Static Predicted 3rd Hour"] = image_pc_pred_static_display["3rd Hour"]
+        image_pc_predictions_display["Dynamic Predicted 3rd Hour"] = image_pc_pred_dynamic_display["3rd Hour"]
+
+        protein_pred_h2_display = protein_input_to_display(self.protein_pred_h2.iloc[0])
+        protein_pred_h3_static_display = protein_input_to_display(self.protein_pred_h3_static.iloc[0])
+        protein_pred_h3_dynamic_display = protein_input_to_display(self.protein_pred_h3_dynamic.iloc[0])
+        protein_predictions_display = self.protein_display_df[["2nd Hour", "3rd Hour"]].add_prefix("Observed ")
+        protein_predictions_display["Predicted 2nd Hour"] = protein_pred_h2_display["2nd Hour"]
+        protein_predictions_display["Static Predicted 3rd Hour"] = protein_pred_h3_static_display["3rd Hour"]
+        protein_predictions_display["Dynamic Predicted 3rd Hour"] = protein_pred_h3_dynamic_display["3rd Hour"]
+
+        transcriptomics_pred_static_display = transcriptomics_input_to_display(self.transcriptomics_pred_static.iloc[0])
+        transcriptomics_pred_dynamic_display = transcriptomics_input_to_display(self.transcriptomics_pred_dynamic.iloc[0])
+        transcriptomics_predictions_display = self.transcriptomics_display_df[["Target"]].add_prefix("Observed ")
+        transcriptomics_predictions_display["Static Predicted Target"] = transcriptomics_pred_static_display["Target"]
+        transcriptomics_predictions_display["Dynamic Predicted Target"] = transcriptomics_pred_dynamic_display["Target"]
+
+        self.predictions_display = {
+            "Hourly Lung Function Predictions": hourly_predictions_display,
+            "Lung X-ray Image Predictions": image_pc_predictions_display,
+            "Protein Predictions": protein_predictions_display,
+            "Transcriptomics Predictions": transcriptomics_predictions_display
+        }
 
 def hourly_inferences_step_1(model_folder, data_folder, output_folder):
 
