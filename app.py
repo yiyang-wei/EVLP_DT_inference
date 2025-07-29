@@ -1,5 +1,7 @@
 from inference.reformat import *
 from inference.XGB_inference_new import XGBInference
+from inference.visualization import *
+
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -128,6 +130,7 @@ def main():
     prediction_save_path = output_folder / f"{selected_demo_case} predictions.xlsx"
 
     predictions_display = None
+    saved_predictions = None
     if prediction_save_path.exists():
         st.info(f"Predictions for {selected_demo_case} already exist. You can view the results below or re-run the inference.")
         predictions_display = load_excel(prediction_save_path)
@@ -162,19 +165,28 @@ def main():
         ])
 
         hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"])
+        hourly_pred_tab.plotly_chart(
+            hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
+            use_container_width=True,
+            # theme=None
+
+        )
         image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
         transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
 
+    if prediction_save_path.exists():
         saved_predictions = load_excel_binary(prediction_save_path)
 
-        st.download_button(
-            label="Download Predictions",
-            data=saved_predictions,
-            file_name=f"{selected_demo_case} predictions.xlsx",
-            mime="application/vnd.ms-excel",
-            use_container_width=True
-        )
+    st.subheader("Step 4: Download Predictions")
+    st.download_button(
+        label="Download Predictions",
+        data=saved_predictions,
+        file_name=f"{selected_demo_case} predictions.xlsx",
+        mime="application/vnd.ms-excel",
+        disabled=saved_predictions is None,
+        use_container_width=True
+    )
 
 
 
