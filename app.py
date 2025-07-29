@@ -174,19 +174,23 @@ def main():
         image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
         transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
+    else:
+        st.warning("No predictions available to view. Please run the inference first.")
 
     if prediction_save_path.exists():
         saved_predictions = load_excel_binary(prediction_save_path)
 
-    st.subheader("Step 4: Download Predictions")
-    st.download_button(
-        label="Download Predictions",
-        data=saved_predictions,
-        file_name=f"{selected_demo_case} predictions.xlsx",
-        mime="application/vnd.ms-excel",
-        disabled=saved_predictions is None,
-        use_container_width=True
-    )
+        st.subheader("Step 4: Download Predictions")
+        st.download_button(
+            label="Download Predictions",
+            data=saved_predictions,
+            file_name=f"{selected_demo_case} predictions.xlsx",
+            mime="application/vnd.ms-excel",
+            disabled=saved_predictions is None,
+            use_container_width=True
+        )
+    else:
+        st.warning("No predictions available to download. Please run the inference first.")
 
 
 
