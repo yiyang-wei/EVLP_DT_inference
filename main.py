@@ -5,7 +5,7 @@ from huggingface_hub import snapshot_download
 
 from inference.XGB_inference_new import XGBInference
 from GRU.GRU import GRU
-from inference.GRU_inference import timeseries_inference
+from inference.GRU_inference import TimeSeriesInference
 
 
 warnings.filterwarnings("ignore")
@@ -31,10 +31,19 @@ for demo_case in data_folder.glob("*.xlsx"):
     xgb_inference.run()
     xgb_inference.get_pred_display()
 
+    print(f"\tRunning GRU inference for {demo_case_name}...")
+    time_series_inference = TimeSeriesInference(model_folder)
+    time_series_inference.load_input_data(demo_case_dfs)
+    time_series_inference.static_inference()
+    time_series_inference.dynamic_inference()
+
     save_path = output_folder / f"{demo_case_name} predictions.xlsx"
     print(f"\tSaving output to {save_path}...")
     with pd.ExcelWriter(save_path) as writer:
         for sheet_name, df in xgb_inference.predictions_display.items():
             df.to_excel(writer, sheet_name=sheet_name)
+        time_series_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")
+        time_series_inference.static_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Static")
+        time_series_inference.dynamic_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Dynamic")
     print()
 
