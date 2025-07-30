@@ -88,7 +88,7 @@ class TimeSeriesInference:
             self.pred_a2[param] = pred
 
         a1_pa2 = np.concatenate([self.a1.to_numpy().reshape(1, 50, 4), self.pred_a2.to_numpy().reshape(1, 50, 4)], axis=1)
-        static_pred_a3_results = self.inference_all_parameters(a1_pa2, "A1F50_A3F50")
+        static_pred_a3_results = self.inference_all_parameters(a1_pa2, "A1F50A2F50_A3F50")
 
         for param, pred in static_pred_a3_results.items():
             self.static_pred_a3[param] = pred
@@ -101,88 +101,3 @@ class TimeSeriesInference:
         dynamic_pred_a3_results = self.inference_all_parameters(a1_a2, "A1F50A2F50_A3F50")
         for param, pred in dynamic_pred_a3_results.items():
             self.dynamic_pred_a3[param] = pred
-
-
-def timeseries_inference(
-        model_folder,
-        output_folder,
-        file_path,
-        mode="static"  # or "dynamic", "static+dynamic"
-):
-    model_folder = pathlib.Path(model_folder)
-    output_folder = pathlib.Path(output_folder)
-
-    # Read in the synthetic data
-    simulated_data = read_simulated_data(file_path)
-    case_id = int(file_path.stem.replace("DT Lung Demo Case ", ""))
-
-    if mode == "static":
-        if simulated_data["A1F50"] is None:
-            raise ValueError("A1F50 data is missing, cannot perform static inference.")
-        setups = static_setups
-    elif mode == "dynamic":
-        if simulated_data["A1F50"] is None or simulated_data["A2F50"] is None:
-            raise ValueError("A1F50 or A2F50 data is missing, cannot perform dynamic inference.")
-        setups = dynamic_setups
-    elif mode == "static+dynamic":
-        if simulated_data["A1F50"] is None:
-            raise ValueError("A1F50 data is missing, cannot perform static or dynamic inference.")
-        setups = static_setups
-        if simulated_data["A2F50"] is None:
-            print("A2F50 data is missing, cannot perform dynamic inference.")
-        else:
-            setups += dynamic_setups
-    
-    # Do inference for the setups and each parameter
-    device = torch.device("cpu")
-
-    for setup in setups:
-        for param in parameter_names:
-            datasets = {
-                "A1F50_A2F50": (simulated_data["A1F50"], simulated_data["A2F50"][:, :, param_idx[param]: param_idx[param] +1] if simulated_data["A2F50"] is not None else None),
-                "A1F50_A3F50": (simulated_data["A1F50"], simulated_data["A3F50"][:, :, param_idx[param]: param_idx[param] +1] if simulated_data["A3F50"] is not None else None),
-            }
-            if mode == "dynamic" or mode == "static+dynamic":
-                datasets["A1F50A2F50_A3F50"] = (np.concatenate([simulated_data["A1F50"], simulated_data["A2F50"]], axis=1), simulated_data["A3F50"][:, :, param_idx[param]: param_idx[param] +1] if simulated_data["A3F50"] is not None else None)
-
-            # Load the saved model
-            model_setup_to_use = setup
-            if setup == "A1F50PA2F50_A3F50":
-                model_setup_to_use = "A1F50A2F50_A3F50"
-                datasets["A1F50PA2F50_A3F50"] = (np.concatenate([simulated_data["A1F50"], simulated_data["PA2F50"]], axis=1), simulated_data["A3F50"][:, :, param_idx[param]: param_idx[param] +1] if simulated_data["A3F50"] is not None else None)
-
-            Model_Folder = model_folder / "GRU" / model_setup_to_use / param / "seed_42_multivariate"
-            model = torch.load(Model_Folder / f"locked_model.pt", map_location=device, weights_only=False)
-            model.eval()
-
-            avg_of_X = average_of_tail(datasets[setup][0])[:, :, param_idx[param]: param_idx[param] +1]
-            true_Y = datasets[setup][1]
-
-            with torch.no_grad():
-                x = torch.tensor(datasets[setup][0], dtype=torch.float32).to(device, non_blocking=True)
-                y_preds = model(x, None).detach().cpu().numpy()
-
-            y_preds = y_preds + avg_of_X
-
-            results = pd.DataFrame()
-            results["case_id"] = np.repeat([case_id], 50)
-            if true_Y is not None:
-                results["true_y"] = true_Y.flatten()
-            results["pred_y"] = y_preds.flatten()
-
-            result_save_path = output_folder / "High-resolution time series" / setup
-            result_save_path.mkdir(parents=True, exist_ok=True)
-
-            results.to_csv(result_save_path / f"{param}_true_pred.csv", index=False)
-
-            # Save A2 predictions to be used for A1F50PA2F50_A3F50 setup
-            if setup == "A1F50_A2F50":
-                np.save(result_save_path / f"{param}_y_pred.npy", y_preds)
-                if param == list(parameter_names.keys())[-1]:
-                    # Add "PA2F50" to arrays
-                    PA2F50_y_pred = []
-                    for p in parameter_names:
-                        y_pred = np.load(result_save_path / f"{p}_y_pred.npy")
-                        PA2F50_y_pred.append(y_pred)
-                    PA2F50_y_pred = np.concatenate(PA2F50_y_pred, axis=2)
-                    simulated_data["PA2F50"] = PA2F50_y_pred.reshape(1, 50, 4)

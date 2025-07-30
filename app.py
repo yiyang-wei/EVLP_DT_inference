@@ -48,14 +48,14 @@ def run_xgb_inference(model_folder, demo_dfs):
     with st.spinner("[4/6] Running Transcriptomics Inference..."):
         xgb_inference.transcriptomics_dynamic_inference()
         xgb_inference.transcriptomics_static_inference()
-    xgb_inference.get_pred_display()
+        xgb_inference.get_pred_display()
     return xgb_inference
 
 @st.cache_resource(show_spinner=False)
 def run_gru_inference(model_folder, demo_dfs):
-    time_series_inference = TimeSeriesInference(model_folder)
-    time_series_inference.load_input_data(demo_dfs)
     with st.spinner("[5/6] Running Static Time Series Inference"):
+        time_series_inference = TimeSeriesInference(model_folder)
+        time_series_inference.load_input_data(demo_dfs)
         time_series_inference.static_inference()
     with st.spinner("[6/6] Running Dynamic Time Series Inference"):
         time_series_inference.dynamic_inference()
