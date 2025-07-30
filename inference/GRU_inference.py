@@ -85,8 +85,6 @@ class TimeSeriesInference:
 
         pred_a2_results = self.inference_all_parameters(self.a1.to_numpy().reshape(1, 50, 4), "A1F50_A2F50")
         for param, pred in pred_a2_results.items():
-            print(f"{self.pred_a2[param].shape = }")
-            print(f"{pred.shape = }")
             self.pred_a2[param] = pred
 
         a1_pa2 = np.concatenate([self.a1.to_numpy().reshape(1, 50, 4), self.pred_a2.to_numpy().reshape(1, 50, 4)], axis=1)

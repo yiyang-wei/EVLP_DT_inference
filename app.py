@@ -1,5 +1,6 @@
 from inference.reformat import *
 from inference.XGB_inference_new import XGBInference
+from GRU.GRU import GRU
 from inference.GRU_inference import TimeSeriesInference
 from inference.visualization import *
 
