@@ -182,17 +182,13 @@ def main():
             image_pc_pred_tab,
             protein_pred_tab,
             transcriptomics_pred_tab,
-            time_series_a2_pred_tab,
-            time_series_a3_static_pred_tab,
-            time_series_a3_dynamic_pred_tab,
+            time_series_pred_tab,
         ) = st.tabs([
             "Hourly Lung Function Prediction",
             "Lung X-ray Image Prediction",
             "Protein Prediction",
             "Transcriptomics Prediction",
-            "2Hr Per-breath Prediction",
-            "3Hr Per-breath Static Prediction",
-            "3Hr Per-breath Dynamic Prediction"
+            "Per-breath Predictions",
         ])
 
         hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"])
@@ -227,9 +223,27 @@ def main():
             use_container_width=True,
         )
 
-        time_series_a2_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"])
-        time_series_a3_static_pred_tab.dataframe(predictions_display["3Hr Per-breath Static"])
-        time_series_a3_dynamic_pred_tab.dataframe(predictions_display["3Hr Per-breath Dynamic"])
+        time_series_pred_tab.markdown("**2Hr Per-breath Prediction**")
+        time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"])
+        col1, col2 = time_series_pred_tab.columns(2)
+        col1.markdown("**3Hr Per-breath Static Prediction**")
+        col1.dataframe(predictions_display["3Hr Per-breath Static"])
+        col2.markdown("**3Hr Per-breath Dynamic Prediction**")
+        col2.dataframe(predictions_display["3Hr Per-breath Dynamic"])
+
+        figs = timeseries_plot(
+            demo_dfs[per_breath_h1_sheet],
+            demo_dfs[per_breath_h2_sheet],
+            demo_dfs[per_breath_h3_sheet],
+            predictions_display["2Hr Per-breath Prediction"],
+            predictions_display["3Hr Per-breath Static"],
+            predictions_display["3Hr Per-breath Dynamic"]
+        )
+        col1, col2 = time_series_pred_tab.columns(2)
+        col1.plotly_chart(figs[0], use_container_width=True)
+        col1.plotly_chart(figs[1], use_container_width=True)
+        col2.plotly_chart(figs[2], use_container_width=True)
+        col2.plotly_chart(figs[3], use_container_width=True)
 
     else:
         st.warning("No predictions available to view. Please run the inference first.")

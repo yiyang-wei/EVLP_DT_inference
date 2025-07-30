@@ -134,8 +134,8 @@ class XGBInference:
         return self.transcriptomics_pred_static
 
     def image_pc_dynamic_inference(self):
-        feat_dir = self.image_pc_model_folder / 'results_true_hyper'
-        model_dir = self.image_pc_model_folder / 'models_true'
+        feat_dir = self.image_pc_model_folder / 'model_dynamic_features'
+        model_dir = self.image_pc_model_folder / 'models_dynamic'
 
         tab_data_df = self.hourly_input_data.copy()
         image_pc1h = self.pc_1h_input_data.add_prefix("1h_")
@@ -152,7 +152,7 @@ class XGBInference:
 
             X_test = merged_df[features].values
 
-            with open(model_dir / f'{col_name}_model.pkl', 'rb') as file:
+            with open(model_dir / f'pca_{pca_num}_model.pkl', 'rb') as file:
                 pipeline = pickle.load(file)
 
             y_pred = pipeline.predict(X_test)
@@ -163,8 +163,8 @@ class XGBInference:
         return self.pc_pred_dynamic
 
     def image_pc_static_inference(self):
-        feat_dir = self.image_pc_model_folder / 'results_true_hyper'
-        model_dir = self.image_pc_model_folder / 'models_pred'
+        feat_dir = self.image_pc_model_folder / 'model_static_features'
+        model_dir = self.image_pc_model_folder / 'models_static'
 
         image_pc1h = self.pc_1h_input_data.add_prefix("1h_")
         image_pc3h = self.pc_3h_input_data.add_prefix("3h_")
@@ -180,7 +180,7 @@ class XGBInference:
 
             X_test = merged_df[features].values
 
-            with open(model_dir / f'{col_name}_model.pkl', 'rb') as file:
+            with open(model_dir / f'pca_{pca_num}_model.pkl', 'rb') as file:
                 pipeline = pickle.load(file)
 
             y_pred = pipeline.predict(X_test)

@@ -3,37 +3,16 @@ import plotly.express as px
 from .reformat import *
 
 
-def hourly_per_feature_line_plot(feature_prediction: pd.Series):
-    observed = pd.DataFrame({
-        "Hour": [1, 2, 3],
-        "Value": feature_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Observed 3rd Hour"]],
-        "Type": "Observed"
-    })
-    static = pd.DataFrame({
-        "Hour": [1, 2, 3],
-        "Value": feature_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]],
-        "Type": "Static Predicted"
-    })
-    dynamic = pd.DataFrame({
-        "Hour": [1, 2, 3],
-        "Value": feature_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Dynamic Predicted 3rd Hour"]],
-        "Type": "Dynamic Predicted"
-    })
-    df = pd.concat([observed, static, dynamic], ignore_index=True)
-    fig = px.line(
-        df,
-        x="Hour",
-        y="Value",
-        color="Type",
-        markers=True,
-        title="Hourly Observations vs Predictions"
-    )
-    fig.update_layout(
-        xaxis=dict(tickmode='array', tickvals=[1, 2, 3], ticktext=['1st Hour', '2nd Hour', '3rd Hour']),
-        yaxis_title=feature_prediction.name,
-        legend_title_text="Observation/Prediction Type"
-    )
-    return fig
+color_map = {
+    "Observed": "grey",
+    "Static Predicted": "#FD8008",
+    "Dynamic Predicted": "#49548A"
+}
+dash_map = {
+    "Observed": "solid",
+    "Static Predicted": "dot",
+    "Dynamic Predicted": "dash"
+}
 
 
 def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
@@ -59,18 +38,6 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
-
-    color_map = {
-        "Observed": "grey",
-        "Static Predicted": "#FD8008",
-        "Dynamic Predicted": "#49548A"
-    }
-
-    dash_map = {
-        "Observed": "solid",
-        "Static Predicted": "dot",
-        "Dynamic Predicted": "dash"
-    }
 
     y_padding = {
         # 'pMean': 2,
@@ -174,16 +141,7 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
-    color_map = {
-        "Observed": "grey",
-        "Static Predicted": "#FD8008",
-        "Dynamic Predicted": "#49548A"
-    }
-    dash_map = {
-        "Observed": "solid",
-        "Static Predicted": "dot",
-        "Dynamic Predicted": "dash"
-    }
+
     fig = px.line(
         df,
         x="Hour",
@@ -214,7 +172,6 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
     return fig
 
 
-
 def protein_line_plot(protein_prediction: pd.DataFrame):
     n_features = len(protein_prediction.index)
     observed = pd.DataFrame({
@@ -236,16 +193,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
-    color_map = {
-        "Observed": "grey",
-        "Static Predicted": "#FD8008",
-        "Dynamic Predicted": "#49548A"
-    }
-    dash_map = {
-        "Observed": "solid",
-        "Static Predicted": "dot",
-        "Dynamic Predicted": "dash"
-    }
+
     fig = px.line(
         df,
         x="Minute",
@@ -296,16 +244,7 @@ def protein_line_plot_2(protein_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
-    color_map = {
-        "Observed": "grey",
-        "Static Predicted": "#FD8008",
-        "Dynamic Predicted": "#49548A"
-    }
-    dash_map = {
-        "Observed": "solid",
-        "Static Predicted": "dot",
-        "Dynamic Predicted": "dash"
-    }
+
     fig = px.line(
         df,
         x="Minute",
@@ -385,3 +324,91 @@ def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
         labels={'variable': 'Prediction Type', 'value': 'Prediction Value', 'index': 'Pathway'},
     )
     return fig
+
+
+def timeseries_plot(a1, true_a2, true_a3, pred_a2, static_pred_a3, dynamic_pred_a3):
+    figs = []
+    paddings = {
+        "Dynamic Compliance (mL/cmH₂O)": 30,
+        "Peak Airway Pressure (cmH₂O)": 5,
+        "Mean Airway Pressure (cmH₂O)": 3,
+        "Expiratory Volume (mL)": 50
+    }
+    for parameter in ["Dynamic Compliance (mL/cmH₂O)", "Peak Airway Pressure (cmH₂O)", "Mean Airway Pressure (cmH₂O)", "Expiratory Volume (mL)"]:
+        parameter_no_unit = parameter.split(" (")[0]
+        param_a1 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": a1[parameter].to_numpy().flatten(),
+            "Type": "Observed",
+            "Hour": "1Hr"
+        })
+
+        param_a2 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": true_a2[parameter].to_numpy().flatten(),
+            "Type": "Observed",
+            "Hour": "2Hr"
+        })
+
+        param_a3 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": true_a3[parameter].to_numpy().flatten(),
+            "Type": "Observed",
+            "Hour": "3Hr"
+        })
+
+        param_pred_a2 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": pred_a2[parameter].to_numpy().flatten(),
+            "Type": "Static Predicted",
+            "Hour": "2Hr"
+        })
+
+        param_static_a3 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": static_pred_a3[parameter].to_numpy().flatten(),
+            "Type": "Static Predicted",
+            "Hour": "3Hr"
+        })
+
+        param_dynamic_a3 = pd.DataFrame({
+            "Breath": np.arange(50),
+            "Value": dynamic_pred_a3[parameter].to_numpy().flatten(),
+            "Type": "Dynamic Predicted",
+            "Hour": "3Hr"
+        })
+
+        # Combine all
+        param_df = pd.concat([param_a1, param_a2, param_a3, param_pred_a2, param_static_a3, param_dynamic_a3], ignore_index=True)
+
+        # Create line plot
+        fig = px.line(
+            param_df,
+            x="Breath",
+            y="Value",
+            color="Type",
+            color_discrete_map=color_map,
+            line_dash="Type",
+            line_dash_map=dash_map,
+            facet_col="Hour",
+            category_orders={"Hour": ["1Hr", "2Hr", "3Hr"]},
+            labels={"Value": parameter, "Breath": "Breath"},
+            title=f"{parameter_no_unit} Per Breath Over Hours"
+        )
+
+        # Final touches
+        fig.update_layout(
+            title_x=0.5,
+            title_xanchor="center",
+            title_y=0.98,
+            legend_title_text="",
+            legend=dict(orientation="h", yanchor="bottom", y=1.1, xanchor="center", x=0.5),
+            margin=dict(t=100),
+            height=500,
+        )
+        fig.for_each_annotation(lambda a: a.update(text=a.text.replace("Hour=", "") + f" {parameter_no_unit}"))
+        y_lim = max(param_df["Value"].min() - paddings[parameter], 0), param_df["Value"].max() + paddings[parameter]
+        fig.update_yaxes(range=y_lim)
+        figs.append(fig)
+
+    return figs
