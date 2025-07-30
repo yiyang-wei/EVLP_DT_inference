@@ -47,7 +47,7 @@ class TimeSeriesInference:
         self.dynamic_pred_a3 = None
 
     def load_model(self, stage: str, param: str) -> torch.nn.Module:
-        path = self.model_folder / "GRU" / stage / param / "seed_42_multivariate" / "locked_model.pt"
+        path = self.model_folder / "GRU" / stage / f"{param}.pt"
         model = torch.load(path, map_location=device, weights_only=False)
         model.eval()
         return model

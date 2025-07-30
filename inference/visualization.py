@@ -409,6 +409,8 @@ def timeseries_plot(a1, true_a2, true_a3, pred_a2, static_pred_a3, dynamic_pred_
         fig.for_each_annotation(lambda a: a.update(text=a.text.replace("Hour=", "") + f" {parameter_no_unit}"))
         y_lim = max(param_df["Value"].min() - paddings[parameter], 0), param_df["Value"].max() + paddings[parameter]
         fig.update_yaxes(range=y_lim)
+        # set x-lim to -10 to 60
+        fig.update_xaxes(range=[-5, 55], tickmode='array', tickvals=[0, 10, 20, 30, 40, 50], showticklabels=True)
         figs.append(fig)
 
     return figs
