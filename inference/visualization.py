@@ -151,3 +151,237 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
             fig.layout[yaxis_name].update(range=[y_min, y_max])
 
     return fig
+
+
+def image_pc_line_plot(image_prediction: pd.DataFrame):
+    n_features = len(image_prediction.index)
+    observed = pd.DataFrame({
+        "Hour": [1, 3] * n_features,
+        "Feature": image_prediction.index.repeat(2),
+        "Value": image_prediction[["Observed 1st Hour", "Observed 3rd Hour"]].values.flatten(),
+        "Type": "Observed"
+    })
+    static = pd.DataFrame({
+        "Hour": [1, 3] * n_features,
+        "Feature": image_prediction.index.repeat(2),
+        "Value": image_prediction[["Observed 1st Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Static Predicted"
+    })
+    dynamic = pd.DataFrame({
+        "Hour": [1, 3] * n_features,
+        "Feature": image_prediction.index.repeat(2),
+        "Value": image_prediction[["Observed 1st Hour", "Dynamic Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Dynamic Predicted"
+    })
+    df = pd.concat([observed, static, dynamic], ignore_index=True)
+    color_map = {
+        "Observed": "grey",
+        "Static Predicted": "#FD8008",
+        "Dynamic Predicted": "#49548A"
+    }
+    dash_map = {
+        "Observed": "solid",
+        "Static Predicted": "dot",
+        "Dynamic Predicted": "dash"
+    }
+    fig = px.line(
+        df,
+        x="Hour",
+        y="Value",
+        color="Type",
+        color_discrete_map=color_map,
+        line_dash="Type",
+        line_dash_map=dash_map,
+        facet_col="Feature",
+        category_orders={"Feature": [name for name in image_pc_name.values()]},
+        facet_col_wrap=5,
+        markers=True,
+        title="Image PC Observations vs Predictions for Each Feature"
+    )
+    fig.for_each_yaxis(lambda y: y.update(matches=None, showticklabels=True))
+    fig.for_each_annotation(lambda a: a.update(text=a.text.replace("Feature=", "")))
+    fig.for_each_xaxis(lambda x: x.update(tickmode='array', tickvals=[1, 3], showticklabels=True))
+    fig.update_traces(opacity=0.7, line=dict(width=3), marker=dict(size=8))
+    fig.update_layout(
+        title_x=0.5,
+        title_xanchor="center",
+        title_y=0.98,
+        legend_title_text="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
+        margin=dict(t=100),
+        height=500,
+    )
+    return fig
+
+
+
+def protein_line_plot(protein_prediction: pd.DataFrame):
+    n_features = len(protein_prediction.index)
+    observed = pd.DataFrame({
+        "Minute": [60, 120, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(3),
+        "Value": protein_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Observed 3rd Hour"]].values.flatten(),
+        "Type": "Observed"
+    })
+    static = pd.DataFrame({
+        "Minute": [60, 120, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(3),
+        "Value": protein_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Static Predicted"
+    })
+    dynamic = pd.DataFrame({
+        "Minute": [60, 120, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(3),
+        "Value": protein_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Dynamic Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Dynamic Predicted"
+    })
+    df = pd.concat([observed, static, dynamic], ignore_index=True)
+    color_map = {
+        "Observed": "grey",
+        "Static Predicted": "#FD8008",
+        "Dynamic Predicted": "#49548A"
+    }
+    dash_map = {
+        "Observed": "solid",
+        "Static Predicted": "dot",
+        "Dynamic Predicted": "dash"
+    }
+    fig = px.line(
+        df,
+        x="Minute",
+        y="Value",
+        color="Type",
+        color_discrete_map=color_map,
+        line_dash="Type",
+        line_dash_map=dash_map,
+        facet_col="Feature",
+        category_orders={"Feature": [name for name in protein_name.values()]},
+        facet_col_wrap=4,
+        markers=True,
+        title="Protein Observations vs Predictions for Each Feature"
+    )
+    fig.for_each_yaxis(lambda y: y.update(matches=None, showticklabels=True))
+    fig.for_each_annotation(lambda a: a.update(text=a.text.replace("Feature=", "")))
+    fig.for_each_xaxis(lambda x: x.update(tickmode='array', tickvals=[60, 120, 180], showticklabels=True))
+    fig.update_traces(opacity=0.7, line=dict(width=3), marker=dict(size=8))
+    fig.update_layout(
+        title_x=0.5,
+        title_xanchor="center",
+        title_y=0.98,
+        legend_title_text="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
+        margin=dict(t=100),
+    )
+    return fig
+
+
+def protein_line_plot_2(protein_prediction: pd.DataFrame):
+    n_features = len(protein_prediction.index)
+    observed = pd.DataFrame({
+        "Minute": [60, 90, 110, 120, 130, 150, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(7),
+        "Value": protein_prediction[["Observed 1st Hour", "Observed 90 Minutes", "Observed 110 Minutes", "Observed 2nd Hour", "Observed 130 Minutes", "Observed 150 Minutes", "Observed 3rd Hour"]].values.flatten(),
+        "Type": "Observed"
+    })
+    static = pd.DataFrame({
+        "Minute": [60, 120, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(3),
+        "Value": protein_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Static Predicted"
+    })
+    dynamic = pd.DataFrame({
+        "Minute": [60, 90, 110, 120, 180] * n_features,
+        "Feature": protein_prediction.index.repeat(5),
+        "Value": protein_prediction[["Observed 1st Hour", "Observed 90 Minutes", "Observed 110 Minutes", "Observed 2nd Hour", "Dynamic Predicted 3rd Hour"]].values.flatten(),
+        "Type": "Dynamic Predicted"
+    })
+    df = pd.concat([observed, static, dynamic], ignore_index=True)
+    color_map = {
+        "Observed": "grey",
+        "Static Predicted": "#FD8008",
+        "Dynamic Predicted": "#49548A"
+    }
+    dash_map = {
+        "Observed": "solid",
+        "Static Predicted": "dot",
+        "Dynamic Predicted": "dash"
+    }
+    fig = px.line(
+        df,
+        x="Minute",
+        y="Value",
+        color="Type",
+        color_discrete_map=color_map,
+        line_dash="Type",
+        line_dash_map=dash_map,
+        facet_col="Feature",
+        category_orders={"Feature": [name for name in protein_name.values()]},
+        facet_col_wrap=4,
+        markers=True,
+        title="Protein Observations vs Predictions for Each Feature"
+    )
+    fig.for_each_yaxis(lambda y: y.update(matches=None, showticklabels=True))
+    fig.for_each_annotation(lambda a: a.update(text=a.text.replace("Feature=", "")))
+    fig.for_each_xaxis(lambda x: x.update(tickmode='array', tickvals=[60, 120, 180], showticklabels=True))
+    fig.update_traces(opacity=0.7, line=dict(width=3), marker=dict(size=8))
+    fig.update_layout(
+        title_x=0.5,
+        title_xanchor="center",
+        title_y=0.98,
+        legend_title_text="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
+        margin=dict(t=100),
+    )
+    return fig
+
+
+def transcriptomics_heatmap(transcriptomics_prediction: pd.DataFrame):
+    rename_dict = {
+        'HALLMARK_APOPTOSIS': 'Apoptosis',
+        'HALLMARK_HYPOXIA': 'Hypoxia',
+        'HALLMARK_IL2_STAT5_SIGNALING': 'IL2/STAT5 signaling',
+        'HALLMARK_IL6_JAK_STAT3_SIGNALING': 'IL6/JAK/STAT3 signaling',
+        'HALLMARK_INFLAMMATORY_RESPONSE': 'Inflammatory response',
+        'HALLMARK_OXIDATIVE_PHOSPHORYLATION': 'Oxidative phosphorylation',
+        'HALLMARK_P53_PATHWAY': 'Tumour protein p53 pathway',
+        'HALLMARK_PI3K_AKT_MTOR_SIGNALING': 'PI3K/AKT/mTOR signaling',
+        'HALLMARK_TGF_BETA_SIGNALING': 'TGF-β signaling',
+        'HALLMARK_TNFA_SIGNALING_VIA_NFKB': 'TNF-α signaling pathway via NF-κB'
+    }
+    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), ["Observed Target", "Static Predicted Target", "Dynamic Predicted Target"]]
+    transcriptomics_prediction = transcriptomics_prediction.rename(index=rename_dict)
+    transcriptomics_prediction = transcriptomics_prediction.sort_values(by="Observed Target", ascending=False)
+    fig = px.imshow(
+        transcriptomics_prediction,
+        color_continuous_scale='RdBu',
+        aspect='auto',
+        title="Transcriptomics Predictions Heatmap",
+        labels={'x': 'Pathway', 'y': 'Sample', 'color': 'Prediction Value'},
+        text_auto=True
+    )
+    return fig
+
+
+def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
+    rename_dict = {
+        'HALLMARK_APOPTOSIS': 'Apoptosis',
+        'HALLMARK_HYPOXIA': 'Hypoxia',
+        'HALLMARK_IL2_STAT5_SIGNALING': 'IL2/STAT5 signaling',
+        'HALLMARK_IL6_JAK_STAT3_SIGNALING': 'IL6/JAK/STAT3 signaling',
+        'HALLMARK_INFLAMMATORY_RESPONSE': 'Inflammatory response',
+        'HALLMARK_OXIDATIVE_PHOSPHORYLATION': 'Oxidative phosphorylation',
+        'HALLMARK_P53_PATHWAY': 'Tumour protein p53 pathway',
+        'HALLMARK_PI3K_AKT_MTOR_SIGNALING': 'PI3K/AKT/mTOR signaling',
+        'HALLMARK_TGF_BETA_SIGNALING': 'TGF-β signaling',
+        'HALLMARK_TNFA_SIGNALING_VIA_NFKB': 'TNF-α signaling pathway via NF-κB'
+    }
+    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), ["Observed Target", "Static Predicted Target", "Dynamic Predicted Target"]]
+    transcriptomics_prediction = transcriptomics_prediction.rename(index=rename_dict)
+    transcriptomics_prediction = transcriptomics_prediction.sort_values(by="Observed Target", ascending=False)
+    fig = px.bar(
+        transcriptomics_prediction,
+        barmode='group',
+        title="Transcriptomics Predictions Bar Plot",
+        labels={'variable': 'Prediction Type', 'value': 'Prediction Value', 'index': 'Pathway'},
+    )
+    return fig

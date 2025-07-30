@@ -168,12 +168,30 @@ def main():
         hourly_pred_tab.plotly_chart(
             hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
             use_container_width=True,
-            # theme=None
-
         )
         image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
+        image_pc_pred_tab.plotly_chart(
+            image_pc_line_plot(predictions_display["Lung X-ray Image Prediction"]),
+            use_container_width=True,
+        )
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
+        protein_pred_tab.plotly_chart(
+            protein_line_plot(predictions_display["Protein Prediction"]),
+            use_container_width=True,
+        )
+        protein_pred_tab.plotly_chart(
+            protein_line_plot_2(predictions_display["Protein Prediction"]),
+            use_container_width=True,
+        )
         transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
+        transcriptomics_pred_tab.plotly_chart(
+            transcriptomics_heatmap(predictions_display["Transcriptomics Prediction"]),
+            use_container_width=True,
+        )
+        transcriptomics_pred_tab.plotly_chart(
+            transcriptomics_bar_plot(predictions_display["Transcriptomics Prediction"]),
+            use_container_width=True,
+        )
     else:
         st.warning("No predictions available to view. Please run the inference first.")
 
