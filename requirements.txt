@@ -6,6 +6,7 @@ scikit-learn==1.6.0
 numpy==1.26.4
 pandas
 openpyxl
+safetensors
 shap
 tqdm
 xgboost

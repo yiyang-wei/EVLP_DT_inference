@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.express as px
 import pathlib
 from huggingface_hub import snapshot_download
+import time
 
 
 @st.cache_data
@@ -21,7 +22,6 @@ def load_excel_binary(file_path):
     with open(file_path, "rb") as f:
         return f.read()
 
-
 def download_huggingface(data_folder, model_folder):
     model_repo_id = "SageLabUHN/DT_Lung"
     data_repo_id = "SageLabUHN/DT_Lung_Demo_Data"
@@ -32,33 +32,114 @@ def download_huggingface(data_folder, model_folder):
         snapshot_download(model_repo_id, local_dir=model_folder, local_dir_use_symlinks=False)
     st.success(f"Successfully downloaded model from huggingface.co/{model_repo_id}")
 
+def check_missing(data, tolerance=1.0):
+    good = "✅ All Good"
+    missing = "❌ {0:.1%} Missing"
+    some_missing = "⚠️ {0:.1%} Missing"
+    null_rate = data.isnull().to_numpy().flatten().mean()
+    return good if null_rate == 0 else some_missing.format(null_rate) if null_rate < tolerance else missing.format(null_rate)
+
+def check_modality_missing(dfs):
+    hourly_1_status = check_missing(dfs[hourly_lung_function_sheet]["1st Hour"])
+    hourly_2_status = check_missing(dfs[hourly_lung_function_sheet]["2nd Hour"])
+    hourly_3_status = check_missing(dfs[hourly_lung_function_sheet]["3rd Hour"])
+    pc_1_status = check_missing(dfs[lung_image_sheet]["1st Hour"])
+    pc_3_status = check_missing(dfs[lung_image_sheet]["3rd Hour"])
+    protein_1_status = check_missing(dfs[protein_sheet][["1st Hour", "90 Minutes", "110 Minutes"]])
+    protein_2_status = check_missing(dfs[protein_sheet][["2nd Hour", "130 Minutes", "150 Minutes"]])
+    protein_3_status = check_missing(dfs[protein_sheet]["3rd Hour"])
+    cit1_status = check_missing(dfs[transcriptomics_sheet]["Baseline"])
+    cit2_status = check_missing(dfs[transcriptomics_sheet]["Target"])
+    a1_status = check_missing(dfs[per_breath_h1_sheet], tolerance=0)
+    a2_status = check_missing(dfs[per_breath_h2_sheet], tolerance=0)
+    a3_status = check_missing(dfs[per_breath_h3_sheet], tolerance=0)
+
+    hourly_missing = pd.Series(name="Hourly Lung Function Data", index=["1st Hour", "2nd Hour"])
+    hourly_missing["1st Hour"] = hourly_1_status
+    hourly_missing["2nd Hour"] = hourly_2_status
+    hourly_missing["3rd Hour"] = hourly_3_status
+    lung_image_missing = pd.Series(name="Lung Image Data", index=["1st Hour", "3rd Hour"])
+    lung_image_missing["1st Hour"] = pc_1_status
+    lung_image_missing["3rd Hour"] = pc_3_status
+    protein_missing = pd.Series(name="Protein Data", index=["1st Hour to 110 Minutes", "2nd Hour to 150 Minutes"])
+    protein_missing["1st Hour to 110 Minutes"] = protein_1_status
+    protein_missing["2nd Hour to 150 Minutes"] = protein_2_status
+    protein_missing["3rd Hour"] = protein_3_status
+    cit_missing = pd.Series(name="Transcriptomics Data", index=["Baseline", "Target"])
+    cit_missing["Baseline"] = cit1_status
+    cit_missing["Target"] = cit2_status
+    ts_missing = pd.Series(name="Time-Series Data", index=["1Hr", "2Hr"])
+    ts_missing["1Hr"] = a1_status
+    ts_missing["2Hr"] = a2_status
+    ts_missing["3Hr"] = a3_status
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.dataframe(hourly_missing)
+    col2.dataframe(lung_image_missing)
+    col3.dataframe(protein_missing)
+    col4.dataframe(cit_missing)
+    col5.dataframe(ts_missing)
+
+    xgb_missing = any(status[0] != "✅" for status in (hourly_1_status, hourly_2_status, pc_1_status, pc_3_status, protein_1_status, protein_2_status, cit1_status))
+    static_gru = a1_status[0] == "✅"
+    dynamic_gru = static_gru and a2_status[0] == "✅"
+
+    if xgb_missing:
+        st.warning("DT will NOT be optimal due to missing data.")
+    if not static_gru:
+        st.warning("Static GRU inference will NOT be performed due to missing 1Hr per-breath data.")
+    if not dynamic_gru:
+        st.warning("Dynamic GRU inference will NOT be performed due to missing 2Hr per-breath data.")
+
+    return static_gru, dynamic_gru
+
 @st.cache_resource(show_spinner=False)
 def run_xgb_inference(model_folder, demo_dfs):
     xgb_inference = XGBInference(model_folder)
     xgb_inference.load_input_data(demo_dfs)
-    with st.spinner("[1/6] Running Hourly Lung Function Inference..."):
+    start = time.time()
+    with st.spinner("Running Hourly Lung Function Inference..."):
         xgb_inference.hourly_dynamic_inference()
         xgb_inference.hourly_static_inference()
-    with st.spinner("[2/6] Running Lung Image Inference..."):
+    end = time.time()
+    st.success(f"Hourly Lung Function Inference completed in {end - start:.2f} seconds.")
+    start = time.time()
+    with st.spinner("Running Lung Image Inference..."):
         xgb_inference.image_pc_dynamic_inference()
         xgb_inference.image_pc_static_inference()
-    with st.spinner("[3/6] Running Protein Inference..."):
+    end = time.time()
+    st.success(f"Lung Image Inference completed in {end - start:.2f} seconds.")
+    start = time.time()
+    with st.spinner("Running Protein Inference..."):
         xgb_inference.protein_dynamic_inference()
         xgb_inference.protein_static_inference()
-    with st.spinner("[4/6] Running Transcriptomics Inference..."):
+    end = time.time()
+    st.success(f"Protein Inference completed in {end - start:.2f} seconds.")
+    start = time.time()
+    with st.spinner("Running Transcriptomics Inference..."):
         xgb_inference.transcriptomics_dynamic_inference()
         xgb_inference.transcriptomics_static_inference()
         xgb_inference.get_pred_display()
+    end = time.time()
+    st.success(f"Transcriptomics Inference completed in {end - start:.2f} seconds.")
     return xgb_inference
 
 @st.cache_resource(show_spinner=False)
-def run_gru_inference(model_folder, demo_dfs):
-    with st.spinner("[5/6] Running Static Time Series Inference"):
-        time_series_inference = TimeSeriesInference(model_folder)
-        time_series_inference.load_input_data(demo_dfs)
-        time_series_inference.static_inference()
-    with st.spinner("[6/6] Running Dynamic Time Series Inference"):
-        time_series_inference.dynamic_inference()
+def run_gru_inference(model_folder, demo_dfs, static_gru=True, dynamic_gru=True):
+    time_series_inference = TimeSeriesInference(model_folder)
+    time_series_inference.load_input_data(demo_dfs)
+    if static_gru:
+        start = time.time()
+        with st.spinner("Running Static Time Series Inference"):
+            time_series_inference.static_inference()
+        end = time.time()
+        st.success(f"Static Time Series Inference completed in {end - start:.2f} seconds.")
+    if dynamic_gru:
+        start = time.time()
+        with st.spinner("Running Dynamic Time Series Inference"):
+            time_series_inference.dynamic_inference()
+        end = time.time()
+        st.success(f"Dynamic Time Series Inference completed in {end - start:.2f} seconds.")
     return time_series_inference
 
 def main():
@@ -69,6 +150,9 @@ def main():
         initial_sidebar_state="expanded",
         layout="wide",
     )
+
+    if "data_mode" not in st.session_state:
+        st.session_state["data_mode"] = "demo"
 
     data_folder = pathlib.Path("Data")
     model_folder = pathlib.Path("Model")
@@ -95,33 +179,68 @@ def main():
         download_huggingface(data_folder, model_folder)
 
     st.subheader("Step 1: Prepare Data")
-    data_source = st.radio(
-        "Use your own data or our demo data?",
-        options=["Use Your Own Data", "Use Demo Data"],
-        index=0
-    )
 
-    demo_files = data_folder.glob(demo_case_prefix + "*")
-    demo_names = [file.stem for file in demo_files if file.is_file()]
-    selected_demo_case = st.selectbox(
-        label="Select a Demo Case",
-        options=demo_names,
-        index=0,
-    )
-    selected_demo_id = int(selected_demo_case.replace(demo_case_prefix, ""))
+    col1, col2 = st.columns(2, border=True)
 
-    demo_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
-    hourly_display_df = demo_dfs[hourly_lung_function_sheet]
-    image_pc_display_df = demo_dfs[lung_image_sheet]
-    protein_display_df = demo_dfs[protein_sheet]
-    transcriptomics_display_df = demo_dfs[transcriptomics_sheet]
+    with col1:
+        st.button(
+            "✔ " * (st.session_state["data_mode"] == "demo") + "Use Demo Data",
+            type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
+            use_container_width=True,
+            on_click=lambda: st.session_state.update(data_mode="demo"),
+        )
+        demo_files = data_folder.glob(demo_case_prefix + "*")
+        demo_names = [file.stem for file in demo_files if file.is_file()]
+        selected_demo_case = st.selectbox(
+            label="Select a Demo Case",
+            options=demo_names,
+            index=0,
+            disabled=st.session_state["data_mode"] != "demo",
+        )
+
+    with col2:
+        st.button(
+            "✔ " * (st.session_state["data_mode"] == "custom") + "Use Your Own Data",
+            type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
+            use_container_width=True,
+            on_click=lambda: st.session_state.update(data_mode="custom"),
+        )
+
+        st.download_button(
+            label="Click Here to Download the Template (Excel File)",
+            data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
+            type='tertiary',
+            disabled=st.session_state["data_mode"] != "custom",
+        )
+        uploaded_case = st.file_uploader(
+            label="Upload Your Own Data (must be an Excel file with the same format as the template)",
+            type=["xlsx"],
+            accept_multiple_files=False,
+            disabled=st.session_state["data_mode"] != "custom",
+        )
+
+    if st.session_state["data_mode"] == "demo":
+        case_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
+        selected_case = selected_demo_case
+    else:
+        case_dfs = load_excel(uploaded_case) if uploaded_case else None
+        selected_case = uploaded_case.name.replace(".xlsx", "") if uploaded_case else None
+
+    if case_dfs is None:
+        st.info("Upload an Excel to see the data preview and run inference.")
+        return
+
+    hourly_display_df = case_dfs[hourly_lung_function_sheet]
+    image_pc_display_df = case_dfs[lung_image_sheet]
+    protein_display_df = case_dfs[protein_sheet]
+    transcriptomics_display_df = case_dfs[transcriptomics_sheet]
     time_series_display_dfs = [
-        demo_dfs[per_breath_h1_sheet],
-        demo_dfs[per_breath_h2_sheet],
-        demo_dfs[per_breath_h3_sheet]
+        case_dfs[per_breath_h1_sheet],
+        case_dfs[per_breath_h2_sheet],
+        case_dfs[per_breath_h3_sheet]
     ]
 
-    with (st.expander(f"Data for {selected_demo_case}", expanded=True)):
+    with (st.expander(f"Data Preview for {selected_case}", expanded=True)):
         (
             hourly_display_tab,
             image_pc_display_tab,
@@ -149,12 +268,13 @@ def main():
 
     st.subheader("Step 2: Run Inference")
 
-    prediction_save_path = output_folder / f"{selected_demo_case} predictions.xlsx"
+    static_gru, dynamic_gru = check_modality_missing(case_dfs)
+
+    prediction_save_path = output_folder / f"{selected_case} predictions.xlsx"
 
     predictions_display = None
-    saved_predictions = None
     if prediction_save_path.exists():
-        st.info(f"Predictions for {selected_demo_case} already exist. You can view the results below or re-run the inference.")
+        st.info(f"Predictions for {selected_case} already exist. You can view the results below or re-run the inference.")
         predictions_display = load_excel(prediction_save_path)
 
     run_inference = st.button(
@@ -164,9 +284,9 @@ def main():
     )
 
     if run_inference:
-        xgb_inference = run_xgb_inference(model_folder, demo_dfs)
-        gru_inference = run_gru_inference(model_folder, demo_dfs)
-        st.success("Inference completed successfully!")
+        xgb_inference = run_xgb_inference(model_folder, case_dfs)
+        gru_inference = run_gru_inference(model_folder, case_dfs, static_gru, dynamic_gru)
+        st.success("✅ All Inference completed successfully!")
         with pd.ExcelWriter(prediction_save_path) as writer:
             for sheet_name, df in xgb_inference.predictions_display.items():
                 df.to_excel(writer, sheet_name=sheet_name)
@@ -177,19 +297,20 @@ def main():
 
     st.subheader("Step 3: View Results")
     if predictions_display is not None:
-        (
-            hourly_pred_tab,
-            image_pc_pred_tab,
-            protein_pred_tab,
-            transcriptomics_pred_tab,
-            time_series_pred_tab,
-        ) = st.tabs([
-            "Hourly Lung Function Prediction",
-            "Lung X-ray Image Prediction",
-            "Protein Prediction",
-            "Transcriptomics Prediction",
-            "Per-breath Predictions",
-        ])
+        with st.container(border=True):
+            (
+                hourly_pred_tab,
+                image_pc_pred_tab,
+                protein_pred_tab,
+                transcriptomics_pred_tab,
+                time_series_pred_tab,
+            ) = st.tabs([
+                "Hourly Lung Function Prediction",
+                "Lung X-ray Image Prediction",
+                "Protein Prediction",
+                "Transcriptomics Prediction",
+                "Per-breath Predictions",
+            ])
 
         hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"])
         hourly_pred_tab.plotly_chart(
@@ -207,10 +328,12 @@ def main():
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
             use_container_width=True,
+            key="protein_line_plot_1"
         )
         protein_pred_tab.plotly_chart(
             protein_line_plot_2(predictions_display["Protein Prediction"]),
             use_container_width=True,
+            key="protein_line_plot_2"
         )
 
         transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
@@ -232,9 +355,9 @@ def main():
         col2.dataframe(predictions_display["3Hr Per-breath Dynamic"])
 
         figs = timeseries_plot(
-            demo_dfs[per_breath_h1_sheet],
-            demo_dfs[per_breath_h2_sheet],
-            demo_dfs[per_breath_h3_sheet],
+            case_dfs[per_breath_h1_sheet],
+            case_dfs[per_breath_h2_sheet],
+            case_dfs[per_breath_h3_sheet],
             predictions_display["2Hr Per-breath Prediction"],
             predictions_display["3Hr Per-breath Static"],
             predictions_display["3Hr Per-breath Dynamic"]
@@ -255,7 +378,7 @@ def main():
         st.download_button(
             label="Download Predictions",
             data=saved_predictions,
-            file_name=f"{selected_demo_case} predictions.xlsx",
+            file_name=f"{selected_case} predictions.xlsx",
             mime="application/vnd.ms-excel",
             disabled=saved_predictions is None,
             use_container_width=True

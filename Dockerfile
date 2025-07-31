@@ -17,6 +17,7 @@ RUN pip install --upgrade pip && \
 
 COPY ./GRU ./GRU
 COPY ./XGB ./XGB
+COPY ./inference ./inference
 COPY ./app.py ./app.py
 
 EXPOSE 8501

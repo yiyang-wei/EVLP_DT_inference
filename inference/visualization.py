@@ -38,6 +38,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
+    df = df.dropna(subset=["Value"])
 
     y_padding = {
         # 'pMean': 2,
@@ -141,6 +142,7 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
+    df = df.dropna(subset=["Value"])
 
     fig = px.line(
         df,
@@ -193,6 +195,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
+    df = df.dropna(subset=["Value"])
 
     fig = px.line(
         df,
@@ -244,6 +247,7 @@ def protein_line_plot_2(protein_prediction: pd.DataFrame):
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
+    df = df.dropna(subset=["Value"])
 
     fig = px.line(
         df,
@@ -380,6 +384,7 @@ def timeseries_plot(a1, true_a2, true_a3, pred_a2, static_pred_a3, dynamic_pred_
 
         # Combine all
         param_df = pd.concat([param_a1, param_a2, param_a3, param_pred_a2, param_static_a3, param_dynamic_a3], ignore_index=True)
+        param_df = param_df.dropna(subset=["Value"])
 
         # Create line plot
         fig = px.line(
