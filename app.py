@@ -54,21 +54,21 @@ def check_modality_missing(dfs):
     a2_status = check_missing(dfs[per_breath_h2_sheet], tolerance=0)
     a3_status = check_missing(dfs[per_breath_h3_sheet], tolerance=0)
 
-    hourly_missing = pd.Series(name="Hourly Lung Function Data", index=["1st Hour", "2nd Hour"])
+    hourly_missing = pd.Series(name="Hourly Lung Function Data", index=["1st Hour", "2nd Hour"], dtype=str)
     hourly_missing["1st Hour"] = hourly_1_status
     hourly_missing["2nd Hour"] = hourly_2_status
     hourly_missing["3rd Hour"] = hourly_3_status
-    lung_image_missing = pd.Series(name="Lung Image Data", index=["1st Hour", "3rd Hour"])
+    lung_image_missing = pd.Series(name="Lung Image Data", index=["1st Hour", "3rd Hour"], dtype=str)
     lung_image_missing["1st Hour"] = pc_1_status
     lung_image_missing["3rd Hour"] = pc_3_status
-    protein_missing = pd.Series(name="Protein Data", index=["1st Hour to 110 Minutes", "2nd Hour to 150 Minutes"])
+    protein_missing = pd.Series(name="Protein Data", index=["1st Hour to 110 Minutes", "2nd Hour to 150 Minutes"], dtype=str)
     protein_missing["1st Hour to 110 Minutes"] = protein_1_status
     protein_missing["2nd Hour to 150 Minutes"] = protein_2_status
     protein_missing["3rd Hour"] = protein_3_status
-    cit_missing = pd.Series(name="Transcriptomics Data", index=["Baseline", "Target"])
+    cit_missing = pd.Series(name="Transcriptomics Data", index=["Baseline", "Target"], dtype=str)
     cit_missing["Baseline"] = cit1_status
     cit_missing["Target"] = cit2_status
-    ts_missing = pd.Series(name="Time-Series Data", index=["1Hr", "2Hr"])
+    ts_missing = pd.Series(name="Time-Series Data", index=["1Hr", "2Hr"], dtype=str)
     ts_missing["1Hr"] = a1_status
     ts_missing["2Hr"] = a2_status
     ts_missing["3Hr"] = a3_status
@@ -287,6 +287,8 @@ def main():
         xgb_inference = run_xgb_inference(model_folder, case_dfs)
         gru_inference = run_gru_inference(model_folder, case_dfs, static_gru, dynamic_gru)
         st.success("✅ All Inference completed successfully!")
+        if prediction_save_path.exists():
+            prediction_save_path.unlink()
         with pd.ExcelWriter(prediction_save_path) as writer:
             for sheet_name, df in xgb_inference.predictions_display.items():
                 df.to_excel(writer, sheet_name=sheet_name)
