@@ -5,6 +5,7 @@ from GRU.util.baselines import average_of_tail
 from GRU.forecasting_pipeline import param_idx
 from GRU.GRU import GRU
 import pathlib
+from safetensors.torch import load_file
 
 static_setups = ["A1F50_A2F50", "A1F50PA2F50_A3F50", "A1F50_A3F50"]
 dynamic_setups = ["A1F50A2F50_A3F50"]
@@ -47,8 +48,24 @@ class TimeSeriesInference:
         self.dynamic_pred_a3 = None
 
     def load_model(self, stage: str, param: str) -> torch.nn.Module:
-        path = self.model_folder / "GRU" / stage / f"{param}.pt"
-        model = torch.load(path, map_location=device, weights_only=False)
+        path = self.model_folder / "GRU" / stage / f"{param}.safetensors"
+        state_dict = load_file(path)
+
+        num_dynamic_feature = state_dict['gru.weight_ih_l0'].shape[1]
+        gru_hidden_size = state_dict['gru.weight_hh_l0'].shape[1]
+        output_sequence_length = state_dict['fcs.fc3.weight'].shape[0]
+
+        model = GRU(
+                    num_dynamic_feature=num_dynamic_feature, 
+                    output_sequence_length=output_sequence_length, 
+                    gru_hidden_size=gru_hidden_size, 
+                    num_static_feature=0,
+                    GRU_params={"num_layers": 1, "bidirectional": False}, 
+                    mlp_hidden_size=[gru_hidden_size + 20, gru_hidden_size], 
+                    mlp_activation="ReLU"
+                    )
+        model.load_state_dict(state_dict)
+        model.to(device)
         model.eval()
         return model
 
