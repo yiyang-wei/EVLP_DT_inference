@@ -209,6 +209,8 @@ def main():
         st.download_button(
             label="Click Here to Download the Template (Excel File)",
             data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
+            file_name="DT Lung Demo Template.xlsx",
+            mime="application/vnd.ms-excel",
             type='tertiary',
             disabled=st.session_state["data_mode"] != "custom",
         )
