@@ -1,5 +1,5 @@
 from inference.reformat import *
-from inference.XGB_inference_new import XGBInference
+from inference.XGB_inference import XGBInference
 from GRU.GRU import GRU
 from inference.GRU_inference import TimeSeriesInference
 from inference.visualization import *
@@ -93,7 +93,6 @@ def check_modality_missing(dfs):
 
     return static_gru, dynamic_gru
 
-@st.cache_resource(show_spinner=False)
 def run_xgb_inference(model_folder, demo_dfs):
     xgb_inference = XGBInference(model_folder)
     xgb_inference.load_input_data(demo_dfs)
@@ -124,7 +123,6 @@ def run_xgb_inference(model_folder, demo_dfs):
     st.success(f"Transcriptomics Inference completed in {end - start:.2f} seconds.")
     return xgb_inference
 
-@st.cache_resource(show_spinner=False)
 def run_gru_inference(model_folder, demo_dfs, static_gru=True, dynamic_gru=True):
     time_series_inference = TimeSeriesInference(model_folder)
     time_series_inference.load_input_data(demo_dfs)
