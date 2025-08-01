@@ -159,6 +159,8 @@ def main():
         layout="wide",
     )
 
+    if "huggingface_downloaded" not in st.session_state:
+        st.session_state["huggingface_downloaded"] = False
     if "data_mode" not in st.session_state:
         st.session_state["data_mode"] = "demo"
 
@@ -173,8 +175,9 @@ def main():
 
     st.subheader("Step 0: Download Models and Data")
 
-    if not data_folder.exists() or not model_folder.exists():
+    if not st.session_state["huggingface_downloaded"]:
         download_huggingface(data_folder, model_folder)
+        st.session_state["huggingface_downloaded"] = True
     else:
         st.success("Models and data already downloaded. You can redownload them if needed.")
 

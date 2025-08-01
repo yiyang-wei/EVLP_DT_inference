@@ -296,11 +296,11 @@ def transcriptomics_heatmap(transcriptomics_prediction: pd.DataFrame):
     transcriptomics_prediction = transcriptomics_prediction.sort_values(by="Observed Target", ascending=False)
     fig = px.imshow(
         transcriptomics_prediction,
-        color_continuous_scale='RdBu',
+        color_continuous_scale='Viridis',
         aspect='auto',
         title="Transcriptomics Predictions Heatmap",
-        labels={'x': 'Pathway', 'y': 'Sample', 'color': 'Prediction Value'},
-        text_auto=True
+        labels={'y': 'Pathway', 'color': 'Enrichment Score'},
+        text_auto="%d",
     )
     return fig
 
@@ -325,7 +325,7 @@ def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
         transcriptomics_prediction,
         barmode='group',
         title="Transcriptomics Predictions Bar Plot",
-        labels={'variable': 'Prediction Type', 'value': 'Prediction Value', 'index': 'Pathway'},
+        labels={'variable': 'Prediction Type', 'value': 'Enrichment Score', 'index': 'Pathway'},
     )
     return fig
 
