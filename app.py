@@ -32,14 +32,25 @@ def load_excel_binary_cache(file_path, stat):
     with open(file_path, "rb") as f:
         return f.read()
 
+def retry_snapshot_download(max_attempts=5, delay=3, *args, **kwargs):
+    for attempt in range(max_attempts):
+        try:
+            return snapshot_download(*args, **kwargs)
+        except Exception as e:
+            if attempt < max_attempts - 1:
+                time.sleep(delay)
+            else:
+                raise e
+    return None
+
 def download_huggingface(data_folder, model_folder):
     model_repo_id = "SageLabUHN/DT_Lung"
     data_repo_id = "SageLabUHN/DT_Lung_Demo_Data"
     with st.spinner(f"Downloading dataset from huggingface.co/datasets/{data_repo_id}"):
-        snapshot_download(data_repo_id, repo_type="dataset", local_dir=data_folder, local_dir_use_symlinks=False)
+        retry_snapshot_download(repo_id=data_repo_id, repo_type="dataset", local_dir=data_folder, local_dir_use_symlinks=False)
     st.success(f"Successfully downloaded dataset from huggingface.co/datasets/{data_repo_id}")
     with st.spinner(f"Downloading model from huggingface.co/{model_repo_id}"):
-        snapshot_download(model_repo_id, local_dir=model_folder, local_dir_use_symlinks=False)
+        retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, local_dir_use_symlinks=False)
     st.success(f"Successfully downloaded model from huggingface.co/{model_repo_id}")
 
 def check_missing(data, tolerance=1.0):
@@ -165,7 +176,9 @@ def main():
         st.session_state["data_mode"] = "demo"
 
     data_folder = Path("Data")
+    data_folder.mkdir(parents=True, exist_ok=True)
     model_folder = Path("Model")
+    model_folder.mkdir(parents=True, exist_ok=True)
     output_folder = Path("Output")
     output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -175,19 +188,23 @@ def main():
 
     st.subheader("Step 0: Download Models and Data")
 
-    if not st.session_state["huggingface_downloaded"]:
-        download_huggingface(data_folder, model_folder)
-        st.session_state["huggingface_downloaded"] = True
-    else:
-        st.success("Models and data already downloaded. You can redownload them if needed.")
-
-    redownload_huggingface = st.button(
-        label="Redownload Models and Data",
-        icon=":material/refresh:",
-        use_container_width=True,
-    )
-    if redownload_huggingface:
-        download_huggingface(data_folder, model_folder)
+    try:
+        if not st.session_state["huggingface_downloaded"]:
+            download_huggingface(data_folder, model_folder)
+            st.session_state["huggingface_downloaded"] = True
+        else:
+            st.success("Models and data already downloaded. You can redownload them if needed.")
+    except Exception as e:
+        st.error(f"Failed to download from huggingface due to internet issue. Please try again in a few seconds.")
+        st.session_state["huggingface_downloaded"] = False
+    finally:
+        redownload_huggingface = st.button(
+            label="Redownload Models and Data",
+            icon=":material/refresh:",
+            use_container_width=True,
+        )
+        if redownload_huggingface:
+            download_huggingface(data_folder, model_folder)
 
     st.subheader("Step 1: Prepare Data")
 
@@ -398,7 +415,6 @@ def main():
         )
     else:
         st.warning("No predictions available to download. Please run the inference first.")
-
 
 
 if __name__ == "__main__":
