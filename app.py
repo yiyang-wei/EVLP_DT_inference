@@ -3,22 +3,32 @@ from inference.XGB_inference import XGBInference
 from GRU.GRU import GRU
 from inference.GRU_inference import TimeSeriesInference
 from inference.visualization import *
-
+import warnings
 import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import pathlib
+from pathlib import Path
 from huggingface_hub import snapshot_download
 import time
 
 
-@st.cache_data
-def load_excel(file_path):
-    return pd.read_excel(file_path, sheet_name=None, index_col=0)
+warnings.filterwarnings("ignore")
+
+
+def load_excel(file_path: Path):
+    return load_excel_cache(file_path, file_path.stat().st_mtime)
 
 @st.cache_data
+def load_excel_cache(file_path, stat):
+    return pd.read_excel(file_path, sheet_name=None, index_col=0)
+
+
 def load_excel_binary(file_path):
+    return load_excel_binary_cache(file_path, file_path.stat().st_mtime)
+
+@st.cache_data
+def load_excel_binary_cache(file_path, stat):
     with open(file_path, "rb") as f:
         return f.read()
 
@@ -152,9 +162,9 @@ def main():
     if "data_mode" not in st.session_state:
         st.session_state["data_mode"] = "demo"
 
-    data_folder = pathlib.Path("Data")
-    model_folder = pathlib.Path("Model")
-    output_folder = pathlib.Path("Output")
+    data_folder = Path("Data")
+    model_folder = Path("Model")
+    output_folder = Path("Output")
     output_folder.mkdir(parents=True, exist_ok=True)
 
     demo_case_prefix = "DT Lung Demo Case "
@@ -223,7 +233,7 @@ def main():
         case_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
         selected_case = selected_demo_case
     else:
-        case_dfs = load_excel(uploaded_case) if uploaded_case else None
+        case_dfs = load_excel_cache(uploaded_case, None) if uploaded_case else None
         selected_case = uploaded_case.name.replace(".xlsx", "") if uploaded_case else None
 
     if case_dfs is None:
@@ -293,7 +303,7 @@ def main():
             gru_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")
             gru_inference.static_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Static")
             gru_inference.dynamic_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Dynamic")
-        predictions_display = pd.read_excel(prediction_save_path, sheet_name=None, index_col=0)
+        predictions_display = load_excel(prediction_save_path)
 
     st.subheader("Step 3: View Results")
     if predictions_display is not None:
