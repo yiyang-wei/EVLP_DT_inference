@@ -173,6 +173,48 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
     )
     return fig
 
+def image_pc_scatter_plot(image_prediction: pd.DataFrame):
+    static = pd.DataFrame({
+        "Feature": image_prediction.index,
+        "Observed 3rd Hour": image_prediction["Observed 3rd Hour"],
+        "Predicted 3rd Hour": image_prediction["Static Predicted 3rd Hour"],
+        "Type": "Static Predicted"
+    })
+
+    dynamic = pd.DataFrame({
+        "Feature": image_prediction.index,
+        "Observed 3rd Hour": image_prediction["Observed 3rd Hour"],
+        "Predicted 3rd Hour": image_prediction["Dynamic Predicted 3rd Hour"],
+        "Type": "Dynamic Predicted"
+    })
+
+    df = pd.concat([static, dynamic], ignore_index=True)
+    df = df.dropna(subset=["Observed 3rd Hour", "Predicted 3rd Hour"])
+
+    fig = px.scatter(
+        df,
+        x="Observed 3rd Hour",
+        y="Predicted 3rd Hour",
+        color="Type",
+        color_discrete_map=color_map,
+        title="Image PC Observations vs Predictions for 3rd Hour",
+        labels={"Observed 3rd Hour": "Observed 3rd Hour", "Predicted 3rd Hour": "Predicted 3rd Hour"},
+        # trendline="ols"
+    )
+
+    fig.update_traces(marker=dict(size=10, opacity=0.7), line=dict(width=2))
+    fig.update_layout(
+        title_x=0.5,
+        title_xanchor="center",
+        title_y=0.98,
+        legend_title_text="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
+        margin=dict(t=100),
+        height=500,
+    )
+
+    return fig
+
 
 def protein_line_plot(protein_prediction: pd.DataFrame):
     n_features = len(protein_prediction.index)

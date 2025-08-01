@@ -349,10 +349,10 @@ def main():
         )
 
         image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
-        image_pc_pred_tab.plotly_chart(
-            image_pc_line_plot(predictions_display["Lung X-ray Image Prediction"]),
-            use_container_width=True,
-        )
+        # image_pc_pred_tab.plotly_chart(
+        #     image_pc_scatter_plot(predictions_display["Lung X-ray Image Prediction"]),
+        #     use_container_width=True,
+        # )
 
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
         protein_pred_tab.plotly_chart(
