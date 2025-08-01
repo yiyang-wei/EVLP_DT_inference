@@ -293,7 +293,7 @@ def main():
             gru_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")
             gru_inference.static_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Static")
             gru_inference.dynamic_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Dynamic")
-        predictions_display = load_excel(prediction_save_path)
+        predictions_display = pd.read_excel(prediction_save_path, sheet_name=None, index_col=0)
 
     st.subheader("Step 3: View Results")
     if predictions_display is not None:
