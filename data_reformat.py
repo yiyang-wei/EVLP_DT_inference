@@ -409,7 +409,7 @@ def main():
         save_folder.mkdir(parents=True, exist_ok=True)
         for case in cases:
             case_name = f"DT Lung Demo Case {case}"
-            with pd.ExcelWriter(save_folder / f"{case_name}.xlsx") as writer:
+            with pd.ExcelWriter(save_folder / f"{case_name}.xlsx", mode='w') as writer:
                 hourly_display_df = hourly_input_to_display(
                     hourly_input_df.loc[case],
                     edema_input_df.loc[case]

@@ -287,9 +287,7 @@ def main():
         xgb_inference = run_xgb_inference(model_folder, case_dfs)
         gru_inference = run_gru_inference(model_folder, case_dfs, static_gru, dynamic_gru)
         st.success("✅ All Inference completed successfully!")
-        if prediction_save_path.exists():
-            prediction_save_path.unlink()
-        with pd.ExcelWriter(prediction_save_path) as writer:
+        with pd.ExcelWriter(prediction_save_path, mode='w') as writer:
             for sheet_name, df in xgb_inference.predictions_display.items():
                 df.to_excel(writer, sheet_name=sheet_name)
             gru_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")

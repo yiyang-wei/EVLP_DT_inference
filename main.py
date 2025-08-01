@@ -38,7 +38,7 @@ for demo_case in data_folder.glob("DT Lung Demo Case *.xlsx"):
 
     save_path = output_folder / f"{demo_case_name} predictions.xlsx"
     print(f"\tSaving output to' {save_path}'...")
-    with pd.ExcelWriter(save_path) as writer:
+    with pd.ExcelWriter(save_path, mode='w') as writer:
         for sheet_name, df in xgb_inference.predictions_display.items():
             df.to_excel(writer, sheet_name=sheet_name)
         time_series_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")
