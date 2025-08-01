@@ -9,4 +9,4 @@ fi
 
 docker run -p 8501:8501 \
   -v "$(pwd)/Output:/app/Output" \
-  evlp-dt-streamlit-app
+  dt-lung

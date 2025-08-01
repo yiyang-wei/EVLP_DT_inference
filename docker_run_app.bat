@@ -10,6 +10,6 @@ IF NOT EXIST "Output" (
 
 docker run -p 8501:8501 ^
   -v "%cd%\Output:/app/Output" ^
-  evlp-dt-streamlit-app
+  dt-lung
 
 ENDLOCAL
