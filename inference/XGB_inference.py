@@ -70,24 +70,25 @@ class XGBInference:
         self.predictions_display = None
 
     def load_input_data(self, dfs):
-        self.hourly_display_df = dfs[hourly_lung_function_sheet]
-        self.image_pc_display_df = dfs[lung_image_sheet]
-        self.protein_display_df = dfs[protein_sheet]
-        self.transcriptomics_display_df = dfs[transcriptomics_sheet]
+        self.hourly_display_df = dfs[InputSheets.hourly_lung_function].reindex(list(HourlyMap.all_labels()))
+        self.image_pc_display_df = dfs[InputSheets.lung_image]
+        self.protein_display_df = dfs[InputSheets.protein]
+        self.transcriptomics_display_df = dfs[InputSheets.transcriptomics]
 
-        hourly_calculated_delta = hourly_calculate_delta(self.hourly_display_df)
+        hourly_calculated_delta = HourlyTranslator.compute_derived_features(self.hourly_display_df)
         hourly_with_calculated_display_df = pd.concat([self.hourly_display_df, hourly_calculated_delta], axis=0)
-        self.hourly_input_data = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)])
+        self.hourly_input_data = pd.DataFrame([HourlyTranslator.to_input_table(hourly_with_calculated_display_df)])
 
-        pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(self.image_pc_display_df)
+        pc_model_input_h1_df, pc_model_input_h3_df = ImagePCTranslator.to_input_table(self.image_pc_display_df)
         self.pc_1h_input_data = pd.DataFrame([pc_model_input_h1_df])
         self.pc_3h_input_data = pd.DataFrame([pc_model_input_h3_df])
 
-        protein_slope_df = calculate_protein_slopes(self.protein_display_df)
-        protein_model_input_df = pd.DataFrame([protein_display_to_input(self.protein_display_df)])
-        protein_slope_input_df = pd.DataFrame([protein_slope_display_to_input(protein_slope_df)])
+        protein_slope_df = ProteinTranslator.compute_slopes(self.protein_display_df)
+        protein_model_input_df = pd.DataFrame([ProteinTranslator.to_input_table(self.protein_display_df)])
+        protein_slope_input_df = pd.DataFrame([ProteinTranslator.slopes_to_input_table(protein_slope_df)])
         self.protein_input_data = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
-        self.transcriptomics_input_data = pd.DataFrame([transcriptomics_display_to_input(self.transcriptomics_display_df)])
+
+        self.transcriptomics_input_data = pd.DataFrame([TranscriptomicsTranslator.to_input_table(self.transcriptomics_display_df)])
 
     def hourly_dynamic_inference(self):
         hourly_h1_h2_to_h3_model_folder = self.hourly_model_folder / "H1_H2_to_H3"
@@ -200,37 +201,37 @@ class XGBInference:
         self.transcriptomics_static_inference()
 
     def get_pred_display(self):
-        hourly_pred_h2_display = hourly_input_to_display(self.hourly_pred_h2.iloc[0])
-        hourly_pred_h3_static_display = hourly_input_to_display(self.hourly_pred_h3_static.iloc[0])
-        hourly_pred_h3_dynamic_display = hourly_input_to_display(self.hourly_pred_h3_dynamic.iloc[0])
+        hourly_pred_h2_display = HourlyTranslator.to_display_table(self.hourly_pred_h2.iloc[0])
+        hourly_pred_h3_static_display = HourlyTranslator.to_display_table(self.hourly_pred_h3_static.iloc[0])
+        hourly_pred_h3_dynamic_display = HourlyTranslator.to_display_table(self.hourly_pred_h3_dynamic.iloc[0])
         hourly_predictions_display = self.hourly_display_df.add_prefix("Observed ")
-        hourly_predictions_display["Predicted 2nd Hour"] = hourly_pred_h2_display["2nd Hour"].astype(float).round(1)
-        hourly_predictions_display["Static Predicted 3rd Hour"] = hourly_pred_h3_static_display["3rd Hour"].astype(float).round(1)
-        hourly_predictions_display["Dynamic Predicted 3rd Hour"] = hourly_pred_h3_dynamic_display["3rd Hour"].astype(float).round(1)
+        hourly_predictions_display[f"Predicted {HourlyOrderMap.H2.label}"] = hourly_pred_h2_display[HourlyOrderMap.H2.label].astype(float).round(1)
+        hourly_predictions_display[f"Static Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_static_display[HourlyOrderMap.H3.label].astype(float).round(1)
+        hourly_predictions_display[f"Dynamic Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_dynamic_display[HourlyOrderMap.H3.label].astype(float).round(1)
 
-        image_pc_pred_static_display = image_pc_input_to_display(None, self.pc_pred_static.iloc[0])
-        image_pc_pred_dynamic_display = image_pc_input_to_display(None, self.pc_pred_dynamic.iloc[0])
+        image_pc_pred_static_display = ImagePCTranslator.to_display_table(None, self.pc_pred_static.iloc[0])
+        image_pc_pred_dynamic_display = ImagePCTranslator.to_display_table(None, self.pc_pred_dynamic.iloc[0])
         image_pc_predictions_display = self.image_pc_display_df.add_prefix("Observed ")
-        image_pc_predictions_display["Static Predicted 3rd Hour"] = image_pc_pred_static_display["3rd Hour"].astype(float)
-        image_pc_predictions_display["Dynamic Predicted 3rd Hour"] = image_pc_pred_dynamic_display["3rd Hour"].astype(float)
+        image_pc_predictions_display[f"Static Predicted {ImagePCOrderMap.H3.label}"] = image_pc_pred_static_display[ImagePCOrderMap.H3.label].astype(float)
+        image_pc_predictions_display[f"Dynamic Predicted {ImagePCOrderMap.H3.label}"] = image_pc_pred_dynamic_display[ImagePCOrderMap.H3.label].astype(float)
 
-        protein_pred_h2_display = protein_input_to_display(self.protein_pred_h2.iloc[0])
-        protein_pred_h3_static_display = protein_input_to_display(self.protein_pred_h3_static.iloc[0])
-        protein_pred_h3_dynamic_display = protein_input_to_display(self.protein_pred_h3_dynamic.iloc[0])
+        protein_pred_h2_display = ProteinTranslator.to_display_table(self.protein_pred_h2.iloc[0])
+        protein_pred_h3_static_display = ProteinTranslator.to_display_table(self.protein_pred_h3_static.iloc[0])
+        protein_pred_h3_dynamic_display = ProteinTranslator.to_display_table(self.protein_pred_h3_dynamic.iloc[0])
         protein_predictions_display = self.protein_display_df.add_prefix("Observed ")
-        protein_predictions_display["Predicted 2nd Hour"] = protein_pred_h2_display["2nd Hour"].astype(float).round(1)
-        protein_predictions_display["Static Predicted 3rd Hour"] = protein_pred_h3_static_display["3rd Hour"].astype(float).round(1)
-        protein_predictions_display["Dynamic Predicted 3rd Hour"] = protein_pred_h3_dynamic_display["3rd Hour"].astype(float).round(1)
+        protein_predictions_display[f"Predicted {ProteinOrderMap.M120.label}"] = protein_pred_h2_display[ProteinOrderMap.M120.label].astype(float).round(1)
+        protein_predictions_display[f"Static Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_static_display[ProteinOrderMap.M180.label].astype(float).round(1)
+        protein_predictions_display[f"Dynamic Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_dynamic_display[ProteinOrderMap.M180.label].astype(float).round(1)
 
-        transcriptomics_pred_static_display = transcriptomics_input_to_display(self.transcriptomics_pred_static.iloc[0])
-        transcriptomics_pred_dynamic_display = transcriptomics_input_to_display(self.transcriptomics_pred_dynamic.iloc[0])
+        transcriptomics_pred_static_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_static.iloc[0])
+        transcriptomics_pred_dynamic_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_dynamic.iloc[0])
         transcriptomics_predictions_display = self.transcriptomics_display_df.add_prefix("Observed ")
-        transcriptomics_predictions_display["Static Predicted Target"] = transcriptomics_pred_static_display["Target"].astype(int)
-        transcriptomics_predictions_display["Dynamic Predicted Target"] = transcriptomics_pred_dynamic_display["Target"].astype(int)
+        transcriptomics_predictions_display[f"Static Predicted {TranscriptomicsOrderMap.cit2.label}"] = transcriptomics_pred_static_display[TranscriptomicsOrderMap.cit2.label].astype(int)
+        transcriptomics_predictions_display[f"Dynamic Predicted {TranscriptomicsOrderMap.cit2.label}"] = transcriptomics_pred_dynamic_display[TranscriptomicsOrderMap.cit2.label].astype(int)
 
         self.predictions_display = {
-            "Hourly Lung Function Prediction": hourly_predictions_display,
-            "Lung X-ray Image Prediction": image_pc_predictions_display,
-            "Protein Prediction": protein_predictions_display,
-            "Transcriptomics Prediction": transcriptomics_predictions_display
+            OutputSheets.hourly_lung_function: hourly_predictions_display,
+            OutputSheets.lung_image: image_pc_predictions_display,
+            OutputSheets.protein: protein_predictions_display,
+            OutputSheets.transcriptomics: transcriptomics_predictions_display
         }

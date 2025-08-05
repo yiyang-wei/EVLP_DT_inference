@@ -202,13 +202,13 @@ def main():
         ts_h2_display_tab,
         ts_h3_display_tab,
     ) = st.tabs([
-        hourly_lung_function_sheet,
-        lung_image_sheet,
-        protein_sheet,
-        transcriptomics_sheet,
-        per_breath_h1_sheet,
-        per_breath_h2_sheet,
-        per_breath_h3_sheet
+        InputSheets.hourly_lung_function,
+        InputSheets.lung_image,
+        InputSheets.protein,
+        InputSheets.transcriptomics,
+        InputSheets.per_breath_h1,
+        InputSheets.per_breath_h2,
+        InputSheets.per_breath_h3,
     ])
 
     hourly_display_df = None
@@ -221,9 +221,9 @@ def main():
     if edema_input_df is None:
         hourly_display_tab.warning("No Lung Edema Data Uploaded.")
     if hourly_input_df is not None and edema_input_df is not None:
-        hourly_display_df = hourly_input_to_display(hourly_input_df.loc[selected_case_id], edema_input_df.loc[selected_case_id])
+        hourly_display_df = HourlyTranslator.to_display_table(hourly_input_df.loc[selected_case_id], edema_input_df.loc[selected_case_id])
         hourly_display_tab.dataframe(hourly_display_df, use_container_width=True)
-        hourly_calculated_delta = hourly_calculate_delta(hourly_display_df)
+        hourly_calculated_delta = HourlyTranslator.compute_derived_features(hourly_display_df)
         hourly_display_tab.dataframe(hourly_calculated_delta, use_container_width=True)
 
     if pc_1hr_input_df is None:
@@ -231,15 +231,15 @@ def main():
     if pc_3hr_input_df is None:
         pc_display_tab.warning("No Lung X-ray 3Hr Data Uploaded.")
     if pc_1hr_input_df is not None and pc_3hr_input_df is not None:
-        pc_display_df = image_pc_input_to_display(pc_1hr_input_df.loc[selected_case_id], pc_3hr_input_df.loc[selected_case_id])
+        pc_display_df = ImagePCTranslator.to_display_table(pc_1hr_input_df.loc[selected_case_id], pc_3hr_input_df.loc[selected_case_id])
         pc_display_tab.dataframe(pc_display_df, use_container_width=True)
 
     if protein_input_df is None:
         protein_display_tab.warning("No Protein Data Uploaded.")
     if protein_input_df is not None:
-        protein_display_df = protein_input_to_display(protein_input_df.loc[selected_case_id])
+        protein_display_df = ProteinTranslator.to_display_table(protein_input_df.loc[selected_case_id])
         protein_display_tab.dataframe(protein_display_df, use_container_width=True)
-        protein_slope_df = calculate_protein_slopes(protein_display_df)
+        protein_slope_df = ProteinTranslator.compute_slopes(protein_display_df)
         protein_display_tab.dataframe(protein_slope_df, use_container_width=True)
 
     if cit1_input_df is None:
@@ -247,7 +247,7 @@ def main():
     if cit2_input_df is None:
         transcriptomics_display_tab.warning("No Transcriptomics Target Data Uploaded.")
     if cit1_input_df is not None and cit2_input_df is not None:
-        transcriptomics_display_df = transcriptomics_input_to_display(
+        transcriptomics_display_df = TranscriptomicsTranslator.to_display_table(
             cit1_input_df.loc[selected_case_id],
             cit2_input_df.loc[selected_case_id]
         )
@@ -258,7 +258,7 @@ def main():
         ts_h2_display_tab.warning("No Per-breath Time-series Data Uploaded.")
         ts_h3_display_tab.warning("No Per-breath Time-series Data Uploaded.")
     else:
-        timeseries_display_dfs = time_series_input_to_display(timeseries_input_df.loc[selected_case_id])
+        timeseries_display_dfs = PerBreathTranslator.to_display_table(timeseries_input_df.loc[selected_case_id])
         ts_h1_display_tab.dataframe(timeseries_display_dfs["A1"], use_container_width=True)
         ts_h2_display_tab.dataframe(timeseries_display_dfs["A2"], use_container_width=True)
         ts_h3_display_tab.dataframe(timeseries_display_dfs["A3"], use_container_width=True)
@@ -277,7 +277,7 @@ def main():
     ])
     if hourly_display_df is not None:
         hourly_with_calculated_display_df = pd.concat([hourly_display_df, hourly_calculated_delta], axis=0)
-        hourly_model_input_df = pd.DataFrame([hourly_display_to_input(hourly_with_calculated_display_df)], index=[selected_case_id])
+        hourly_model_input_df = pd.DataFrame([HourlyTranslator.to_input_table(hourly_with_calculated_display_df)], index=[selected_case_id])
         hourly_model_input_tab.dataframe(hourly_model_input_df)
         hourly_mismatches = compare_series_mismatches(
             hourly_model_input_df.loc[selected_case_id, hourly_input_df.columns],
@@ -300,7 +300,7 @@ def main():
             hourly_model_input_tab.error("Reverted Lung Edema Data does not match the original input data.")
             hourly_model_input_tab.dataframe(edema_mismatches, use_container_width=True)
     if pc_display_df is not None:
-        pc_model_input_h1_df, pc_model_input_h3_df = image_pc_display_to_input(pc_display_df)
+        pc_model_input_h1_df, pc_model_input_h3_df = ImagePCTranslator.to_input_table(pc_display_df)
         pc_model_input_h1_df = pd.DataFrame([pc_model_input_h1_df], index=[selected_case_id])
         pc_model_input_h3_df = pd.DataFrame([pc_model_input_h3_df], index=[selected_case_id])
         pc_model_input_tab.dataframe(pc_model_input_h1_df, use_container_width=True)
@@ -327,8 +327,8 @@ def main():
             pc_model_input_tab.dataframe(pc_h3_mismatches, use_container_width=True)
 
     if protein_display_df is not None:
-        protein_model_input_df = pd.DataFrame([protein_display_to_input(protein_display_df)], index=[selected_case_id])
-        protein_slope_input_df = pd.DataFrame([protein_slope_display_to_input(protein_slope_df)], index=[selected_case_id])
+        protein_model_input_df = pd.DataFrame([ProteinTranslator.to_input_table(protein_display_df)], index=[selected_case_id])
+        protein_slope_input_df = pd.DataFrame([ProteinTranslator.slopes_to_input_table(protein_slope_df)], index=[selected_case_id])
         protein_with_slope_model_input_df = pd.concat([protein_model_input_df, protein_slope_input_df], axis=1)
         protein_model_input_tab.dataframe(protein_with_slope_model_input_df, use_container_width=True)
         protein_mismatches = compare_series_mismatches(
@@ -343,7 +343,7 @@ def main():
             protein_model_input_tab.dataframe(protein_mismatches, use_container_width=True)
 
     if transcriptomics_display_df is not None:
-        transcriptomics_model_input_df = pd.DataFrame([transcriptomics_display_to_input(transcriptomics_display_df)], index=[selected_case_id])
+        transcriptomics_model_input_df = pd.DataFrame([TranscriptomicsTranslator.to_input_table(transcriptomics_display_df)], index=[selected_case_id])
         cit_model_input_tab.dataframe(transcriptomics_model_input_df, use_container_width=True)
         cit1_mismatches = compare_series_mismatches(
             transcriptomics_model_input_df.loc[selected_case_id, cit1_input_df.columns],
@@ -410,27 +410,56 @@ def main():
         for case in cases:
             case_name = f"DT Lung Demo Case {case}"
             with pd.ExcelWriter(save_folder / f"{case_name}.xlsx", mode='w') as writer:
-                hourly_display_df = hourly_input_to_display(
+                hourly_display_df = HourlyTranslator.to_display_table(
                     hourly_input_df.loc[case],
                     edema_input_df.loc[case]
                 )
-                pc_display_df = image_pc_input_to_display(
+                pc_display_df = ImagePCTranslator.to_display_table(
                     pc_1hr_input_df.loc[case],
                     pc_3hr_input_df.loc[case]
                 )
-                protein_display_df = protein_input_to_display(protein_input_df.loc[case])
-                transcriptomics_display_df = transcriptomics_input_to_display(
+                protein_display_df = ProteinTranslator.to_display_table(protein_input_df.loc[case])
+
+                transcriptomics_display_df = TranscriptomicsTranslator.to_display_table(
                     cit1_input_df.loc[case],
                     cit2_input_df.loc[case]
                 )
-                timeseries_display_dfs = time_series_input_to_display(timeseries_input_df.loc[case])
-                hourly_display_df.to_excel(writer, sheet_name=hourly_lung_function_sheet)
-                pc_display_df.to_excel(writer, sheet_name=lung_image_sheet)
-                protein_display_df.to_excel(writer, sheet_name=protein_sheet)
-                transcriptomics_display_df.to_excel(writer, sheet_name=transcriptomics_sheet)
-                timeseries_display_dfs["A1"].to_excel(writer, sheet_name=per_breath_h1_sheet)
-                timeseries_display_dfs["A2"].to_excel(writer, sheet_name=per_breath_h2_sheet)
-                timeseries_display_dfs["A3"].to_excel(writer, sheet_name=per_breath_h3_sheet)
+                timeseries_display_dfs = PerBreathTranslator.to_display_table(timeseries_input_df.loc[case])
+                hourly_display_df.to_excel(writer, sheet_name=InputSheets.hourly_lung_function)
+                pc_display_df.to_excel(writer, sheet_name=InputSheets.lung_image)
+                protein_display_df.to_excel(writer, sheet_name=InputSheets.protein)
+                transcriptomics_display_df.to_excel(writer, sheet_name=InputSheets.transcriptomics)
+                timeseries_display_dfs["A1"].to_excel(writer, sheet_name=InputSheets.per_breath_h1)
+                timeseries_display_dfs["A2"].to_excel(writer, sheet_name=InputSheets.per_breath_h2)
+                timeseries_display_dfs["A3"].to_excel(writer, sheet_name=InputSheets.per_breath_h3)
+        template_hourly_display_df = pd.DataFrame(
+            index=hourly_features_to_display,
+            columns=list(HourlyMap.all_labels())
+        )
+        template_pc_display_df = pd.DataFrame(
+            index=list(ImagePCMap.all_labels()),
+            columns=list(ImagePCOrderMap.all_labels())
+        )
+        template_protein_display_df = pd.DataFrame(
+            index=list(ProteinMap.all_labels()),
+            columns=list(ProteinOrderMap.all_labels())
+        )
+        template_transcriptomics_display_df = pd.DataFrame(
+            index=transcriptomics_display_df.index,
+            columns=list(TranscriptomicsOrderMap.all_labels())
+        )
+        template_timeseries_display_df = pd.DataFrame(
+            index=timeseries_display_dfs["A1"].index,
+            columns= list(PerBreathParameterMap.all_labels())
+        )
+        with pd.ExcelWriter(save_folder / "Display Data Template.xlsx", mode='w') as writer:
+            template_hourly_display_df.to_excel(writer, sheet_name=InputSheets.hourly_lung_function)
+            template_pc_display_df.to_excel(writer, sheet_name=InputSheets.lung_image)
+            template_protein_display_df.to_excel(writer, sheet_name=InputSheets.protein)
+            template_transcriptomics_display_df.to_excel(writer, sheet_name=InputSheets.transcriptomics)
+            template_timeseries_display_df.to_excel(writer, sheet_name=InputSheets.per_breath_h1)
+            template_timeseries_display_df.to_excel(writer, sheet_name=InputSheets.per_breath_h2)
+            template_timeseries_display_df.to_excel(writer, sheet_name=InputSheets.per_breath_h3)
         st.success(f"All display data saved in {save_folder_name} folder.")
 
 

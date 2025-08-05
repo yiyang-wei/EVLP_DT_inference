@@ -61,38 +61,38 @@ def check_missing(data, tolerance=1.0):
     return good if null_rate == 0 else some_missing.format(null_rate) if null_rate < tolerance else missing.format(null_rate)
 
 def check_modality_missing(dfs):
-    hourly_1_status = check_missing(dfs[hourly_lung_function_sheet]["1st Hour"])
-    hourly_2_status = check_missing(dfs[hourly_lung_function_sheet]["2nd Hour"])
-    hourly_3_status = check_missing(dfs[hourly_lung_function_sheet]["3rd Hour"])
-    pc_1_status = check_missing(dfs[lung_image_sheet]["1st Hour"])
-    pc_3_status = check_missing(dfs[lung_image_sheet]["3rd Hour"])
-    protein_1_status = check_missing(dfs[protein_sheet][["1st Hour", "90 Minutes", "110 Minutes"]])
-    protein_2_status = check_missing(dfs[protein_sheet][["2nd Hour", "130 Minutes", "150 Minutes"]])
-    protein_3_status = check_missing(dfs[protein_sheet]["3rd Hour"])
-    cit1_status = check_missing(dfs[transcriptomics_sheet]["Baseline"])
-    cit2_status = check_missing(dfs[transcriptomics_sheet]["Target"])
-    a1_status = check_missing(dfs[per_breath_h1_sheet], tolerance=0)
-    a2_status = check_missing(dfs[per_breath_h2_sheet], tolerance=0)
-    a3_status = check_missing(dfs[per_breath_h3_sheet], tolerance=0)
+    hourly_missing = pd.Series(name=InputSheets.hourly_lung_function, index=list(HourlyOrderMap.all_labels()), dtype=str)
+    for label in HourlyOrderMap.all_labels():
+        hourly_missing[label] = check_missing(dfs[InputSheets.hourly_lung_function].loc[hourly_features_to_display, label])
+    hourly_1_status = hourly_missing[HourlyOrderMap.H1.label]
+    hourly_2_status = hourly_missing[HourlyOrderMap.H2.label]
 
-    hourly_missing = pd.Series(name="Hourly Lung Function Data", index=["1st Hour", "2nd Hour"], dtype=str)
-    hourly_missing["1st Hour"] = hourly_1_status
-    hourly_missing["2nd Hour"] = hourly_2_status
-    hourly_missing["3rd Hour"] = hourly_3_status
-    lung_image_missing = pd.Series(name="Lung Image Data", index=["1st Hour", "3rd Hour"], dtype=str)
-    lung_image_missing["1st Hour"] = pc_1_status
-    lung_image_missing["3rd Hour"] = pc_3_status
-    protein_missing = pd.Series(name="Protein Data", index=["1st Hour to 110 Minutes", "2nd Hour to 150 Minutes"], dtype=str)
-    protein_missing["1st Hour to 110 Minutes"] = protein_1_status
-    protein_missing["2nd Hour to 150 Minutes"] = protein_2_status
-    protein_missing["3rd Hour"] = protein_3_status
-    cit_missing = pd.Series(name="Transcriptomics Data", index=["Baseline", "Target"], dtype=str)
-    cit_missing["Baseline"] = cit1_status
-    cit_missing["Target"] = cit2_status
-    ts_missing = pd.Series(name="Time-Series Data", index=["1Hr", "2Hr"], dtype=str)
-    ts_missing["1Hr"] = a1_status
-    ts_missing["2Hr"] = a2_status
-    ts_missing["3Hr"] = a3_status
+    lung_image_missing = pd.Series(name=InputSheets.lung_image, index=ImagePCOrderMap.all_labels(), dtype=str)
+    for label in ImagePCOrderMap.all_labels():
+        lung_image_missing[label] = check_missing(dfs[InputSheets.lung_image][label])
+    pc_1_status = lung_image_missing[ImagePCOrderMap.H1.label]
+    pc_3_status = lung_image_missing[ImagePCOrderMap.H3.label]
+
+    protein_missing = pd.Series(name=InputSheets.protein,
+                                index=[f"{ProteinOrderMap.M60.label} to {ProteinOrderMap.M110.label}",
+                                       f"{ProteinOrderMap.M120.label} to {ProteinOrderMap.M150.label}",
+                                       ProteinOrderMap.M180.label],
+                                dtype=str)
+    protein_1_status = check_missing(dfs[InputSheets.protein][[ProteinOrderMap.M60.label, ProteinOrderMap.M90.label, ProteinOrderMap.M110.label]])
+    protein_2_status = check_missing(dfs[InputSheets.protein][[ProteinOrderMap.M120.label, ProteinOrderMap.M130.label, ProteinOrderMap.M150.label]])
+    protein_missing[f"{ProteinOrderMap.M60.label} to {ProteinOrderMap.M110.label}"] = protein_1_status
+    protein_missing[f"{ProteinOrderMap.M120.label} to {ProteinOrderMap.M150.label}"] = protein_2_status
+    protein_missing[ProteinOrderMap.M180.label] = check_missing(dfs[InputSheets.protein][ProteinOrderMap.M180.label])
+
+    cit_missing = pd.Series(name=InputSheets.transcriptomics, index=TranscriptomicsOrderMap.all_labels(), dtype=str)
+    for label in TranscriptomicsOrderMap.all_labels():
+        cit_missing[label] = check_missing(dfs[InputSheets.transcriptomics][label])
+    cit1_status = cit_missing[TranscriptomicsOrderMap.cit1.label]
+
+    ts_missing = pd.Series(name="Per-breath Data", index=["1Hr", "2Hr", "3Hr"], dtype=str)
+    ts_missing["1Hr"] = check_missing(dfs[InputSheets.per_breath_h1], tolerance=0)
+    ts_missing["2Hr"] = check_missing(dfs[InputSheets.per_breath_h2], tolerance=0)
+    ts_missing["3Hr"] = check_missing(dfs[InputSheets.per_breath_h3], tolerance=0)
 
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.dataframe(hourly_missing)
@@ -102,8 +102,8 @@ def check_modality_missing(dfs):
     col5.dataframe(ts_missing)
 
     xgb_missing = any(status[0] != "✅" for status in (hourly_1_status, hourly_2_status, pc_1_status, pc_3_status, protein_1_status, protein_2_status, cit1_status))
-    static_gru = a1_status[0] == "✅"
-    dynamic_gru = static_gru and a2_status[0] == "✅"
+    static_gru = ts_missing["1Hr"][0] == "✅"
+    dynamic_gru = static_gru and ts_missing["2Hr"][0] == "✅"
 
     if xgb_missing:
         st.warning("DT will NOT be optimal due to missing data.")
@@ -260,14 +260,15 @@ def main():
         st.info("Upload an Excel to see the data preview and run inference.")
         return
 
-    hourly_display_df = case_dfs[hourly_lung_function_sheet]
-    image_pc_display_df = case_dfs[lung_image_sheet]
-    protein_display_df = case_dfs[protein_sheet]
-    transcriptomics_display_df = case_dfs[transcriptomics_sheet]
+    case_dfs[InputSheets.hourly_lung_function] = case_dfs[InputSheets.hourly_lung_function].reindex(list(HourlyMap.all_labels()))
+    hourly_display_df = case_dfs[InputSheets.hourly_lung_function]
+    image_pc_display_df = case_dfs[InputSheets.lung_image]
+    protein_display_df = case_dfs[InputSheets.protein]
+    transcriptomics_display_df = case_dfs[InputSheets.transcriptomics]
     time_series_display_dfs = [
-        case_dfs[per_breath_h1_sheet],
-        case_dfs[per_breath_h2_sheet],
-        case_dfs[per_breath_h3_sheet]
+        case_dfs[InputSheets.per_breath_h1],
+        case_dfs[InputSheets.per_breath_h2],
+        case_dfs[InputSheets.per_breath_h3]
     ]
 
     with (st.expander(f"Data Preview for {selected_case}", expanded=True)):
@@ -288,7 +289,7 @@ def main():
             "2nd Hour per-breath Data",
             "3rd Hour per-breath Data"
         ])
-        hourly_display_tab.dataframe(hourly_display_df)
+        hourly_display_tab.dataframe(hourly_display_df.loc[hourly_features_to_display])
         image_pc_display_tab.dataframe(image_pc_display_df)
         protein_display_tab.dataframe(protein_display_df)
         transcriptomics_display_tab.dataframe(transcriptomics_display_df)
@@ -320,9 +321,9 @@ def main():
         with pd.ExcelWriter(prediction_save_path, mode='w') as writer:
             for sheet_name, df in xgb_inference.predictions_display.items():
                 df.to_excel(writer, sheet_name=sheet_name)
-            gru_inference.pred_a2.to_excel(writer, sheet_name="2Hr Per-breath Prediction")
-            gru_inference.static_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Static")
-            gru_inference.dynamic_pred_a3.to_excel(writer, sheet_name="3Hr Per-breath Dynamic")
+            gru_inference.pred_a2.to_excel(writer, sheet_name=OutputSheets.per_breath_h2)
+            gru_inference.static_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_static)
+            gru_inference.dynamic_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_dynamic)
         predictions_display = load_excel(prediction_save_path)
 
     st.subheader("Step 3: View Results")
@@ -342,7 +343,7 @@ def main():
                 "Per-breath Predictions",
             ])
 
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"])
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display])
         hourly_pred_tab.plotly_chart(
             hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
             use_container_width=True,
@@ -385,12 +386,12 @@ def main():
         col2.dataframe(predictions_display["3Hr Per-breath Dynamic"])
 
         figs = timeseries_plot(
-            case_dfs[per_breath_h1_sheet],
-            case_dfs[per_breath_h2_sheet],
-            case_dfs[per_breath_h3_sheet],
-            predictions_display["2Hr Per-breath Prediction"],
-            predictions_display["3Hr Per-breath Static"],
-            predictions_display["3Hr Per-breath Dynamic"]
+            case_dfs[InputSheets.per_breath_h1],
+            case_dfs[InputSheets.per_breath_h2],
+            case_dfs[InputSheets.per_breath_h3],
+            predictions_display[OutputSheets.per_breath_h2],
+            predictions_display[OutputSheets.per_breath_h3_static],
+            predictions_display[OutputSheets.per_breath_h3_dynamic],
         )
         col1, col2 = time_series_pred_tab.columns(2)
         col1.plotly_chart(figs[0], use_container_width=True)

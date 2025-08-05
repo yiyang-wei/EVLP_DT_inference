@@ -16,25 +16,24 @@ dash_map = {
 
 
 def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
-    features_to_drop = [hourly_name[code] for code in ["pMean", "pPeak", "Cdyn"]]
-    hourly_prediction = hourly_prediction.drop(index=features_to_drop, errors='ignore')
+    hourly_prediction = hourly_prediction.drop(index=excluded_hourly_features_in_display, errors='ignore')
     n_features = len(hourly_prediction.index)
     observed = pd.DataFrame({
         "Hour": [1, 2, 3] * n_features,
         "Feature": hourly_prediction.index.repeat(3),
-        "Value": hourly_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Observed 3rd Hour"]].values.flatten(),
+        "Value": hourly_prediction[[f"Observed {HourlyOrderMap.H1.label}", f"Observed {HourlyOrderMap.H2.label}", f"Observed {HourlyOrderMap.H3.label}"]].values.flatten(),
         "Type": "Observed"
     })
     static = pd.DataFrame({
         "Hour": [1, 2, 3] * n_features,
         "Feature": hourly_prediction.index.repeat(3),
-        "Value": hourly_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Value": hourly_prediction[[f"Observed {HourlyOrderMap.H1.label}", f"Predicted {HourlyOrderMap.H2.label}", f"Static Predicted {HourlyOrderMap.H3.label}"]].values.flatten(),
         "Type": "Static Predicted"
     })
     dynamic = pd.DataFrame({
         "Hour": [1, 2, 3] * n_features,
         "Feature": hourly_prediction.index.repeat(3),
-        "Value": hourly_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Dynamic Predicted 3rd Hour"]].values.flatten(),
+        "Value": hourly_prediction[[f"Observed {HourlyOrderMap.H1.label}", f"Observed {HourlyOrderMap.H2.label}", f"Dynamic Predicted {HourlyOrderMap.H3.label}"]].values.flatten(),
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
@@ -77,7 +76,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in hourly_name.values() if name not in features_to_drop]},
+        category_orders={"Feature": hourly_features_to_display},
         facet_col_wrap=6,
         markers=True,
         title="Hourly Observations vs Predictions for Each Feature"
@@ -102,10 +101,10 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
     for i, annotation in enumerate(fig.layout.annotations):
         feature = annotation.text
         feature_data = df[df["Feature"] == feature]["Value"]
-        padding = y_padding.get(hourly_code[feature])
+        padding = y_padding.get(HourlyMap.to_key(feature))
         if padding is None:
             continue
-        lower, upper = y_boundary.get(hourly_code[feature], (0, None))
+        lower, upper = y_boundary.get(HourlyMap.to_key(feature), (0, None))
 
         y_min = feature_data.min() - padding
         if lower is not None:
@@ -153,7 +152,7 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in image_pc_name.values()]},
+        category_orders={"Feature": [name for name in ImagePCMap.all_labels()]},
         facet_col_wrap=5,
         markers=True,
         title="Image PC Observations vs Predictions for Each Feature"
@@ -248,7 +247,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in protein_name.values()]},
+        category_orders={"Feature": [name for name in ProteinMap.all_labels()]},
         facet_col_wrap=4,
         markers=True,
         title="Protein Observations vs Predictions for Each Feature"
@@ -300,7 +299,7 @@ def protein_line_plot_2(protein_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in protein_name.values()]},
+        category_orders={"Feature": [name for name in ProteinMap.all_labels()]},
         facet_col_wrap=4,
         markers=True,
         title="Protein Observations vs Predictions for Each Feature"
