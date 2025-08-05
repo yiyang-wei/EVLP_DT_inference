@@ -434,7 +434,7 @@ def main():
                 timeseries_display_dfs["A3"].to_excel(writer, sheet_name=InputSheets.per_breath_h3)
         template_hourly_display_df = pd.DataFrame(
             index=hourly_features_to_display,
-            columns=list(HourlyMap.all_labels())
+            columns=list(HourlyOrderMap.all_labels())
         )
         template_pc_display_df = pd.DataFrame(
             index=list(ImagePCMap.all_labels()),
