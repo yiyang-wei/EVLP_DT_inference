@@ -15,7 +15,7 @@ dash_map = {
 }
 
 
-def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
+def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, col_wrap: int = 6):
     hourly_prediction = hourly_prediction.drop(index=excluded_hourly_features_in_display, errors='ignore')
     n_features = len(hourly_prediction.index)
     observed = pd.DataFrame({
@@ -77,7 +77,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame):
         line_dash_map=dash_map,
         facet_col="Feature",
         category_orders={"Feature": hourly_features_to_display},
-        facet_col_wrap=6,
+        facet_col_wrap=col_wrap,
         markers=True,
         title="Hourly Observations vs Predictions for Each Feature"
     )
