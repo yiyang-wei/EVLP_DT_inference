@@ -11,8 +11,11 @@ from inference.GRU_inference import TimeSeriesInference
 warnings.filterwarnings("ignore")
 
 model_folder = pathlib.Path("Model")
+model_folder.mkdir(exist_ok=True, parents=True)
 data_folder = pathlib.Path("Data")
+data_folder.mkdir(exist_ok=True, parents=True)
 output_folder = pathlib.Path("Output")
+output_folder.mkdir(exist_ok=True, parents=True)
 
 snapshot_download("SageLabUHN/DT_Lung", local_dir=model_folder, local_dir_use_symlinks=False)
 snapshot_download("SageLabUHN/DT_Lung_Demo_Data", repo_type="dataset", local_dir=data_folder, local_dir_use_symlinks=False)
