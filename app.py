@@ -361,11 +361,11 @@ def main():
             use_container_width=True,
             key="protein_line_plot_1"
         )
-        protein_pred_tab.plotly_chart(
-            protein_line_plot_2(predictions_display["Protein Prediction"]),
-            use_container_width=True,
-            key="protein_line_plot_2"
-        )
+        # protein_pred_tab.plotly_chart(
+        #     protein_line_plot_2(predictions_display["Protein Prediction"]),
+        #     use_container_width=True,
+        #     key="protein_line_plot_2"
+        # )
 
         transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
         transcriptomics_pred_tab.plotly_chart(
