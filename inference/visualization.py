@@ -263,6 +263,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame, wide: bool = True):
         legend_title_text="",
         legend=dict(orientation="h", yanchor="bottom", y=1.12, xanchor="center", x=0.5),
         margin=dict(t=100),
+        height=500 if wide else 1000,
     )
     return fig
 
