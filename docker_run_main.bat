@@ -10,6 +10,6 @@ IF NOT EXIST "Output" (
 
 docker run -it ^
   -v "%cd%\Output:/app/Output" ^
-  dt-lung python main.py
+  sagelabuhn/dt_lung:latest python main.py
 
 ENDLOCAL

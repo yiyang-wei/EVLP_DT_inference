@@ -9,4 +9,4 @@ fi
 
 docker run -it \
   -v "$(pwd)/Output:/app/Output" \
-  dt-lung python main.py
+  sagelabuhn/dt_lung:latest python main.py
