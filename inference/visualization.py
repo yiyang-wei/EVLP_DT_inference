@@ -152,7 +152,7 @@ def image_pc_line_plot(image_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in ImagePCMap.all_labels()]},
+        category_orders={"Feature": list(ImagePCMap.all_labels())},
         facet_col_wrap=5,
         markers=True,
         title="Image PC Observations vs Predictions for Each Feature"
@@ -220,19 +220,19 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
     observed = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
         "Feature": protein_prediction.index.repeat(3),
-        "Value": protein_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Observed 3rd Hour"]].values.flatten(),
+        "Value": protein_prediction[[f"Observed {ProteinOrderMap.M60.label}", f"Observed {ProteinOrderMap.M120.label}", f"Observed {ProteinOrderMap.M180.label}"]].values.flatten(),
         "Type": "Observed"
     })
     static = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
         "Feature": protein_prediction.index.repeat(3),
-        "Value": protein_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Value": protein_prediction[[f"Observed {ProteinOrderMap.M60.label}", f"Predicted {ProteinOrderMap.M120.label}", f"Static Predicted {ProteinOrderMap.M180.label}"]].values.flatten(),
         "Type": "Static Predicted"
     })
     dynamic = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
         "Feature": protein_prediction.index.repeat(3),
-        "Value": protein_prediction[["Observed 1st Hour", "Observed 2nd Hour", "Dynamic Predicted 3rd Hour"]].values.flatten(),
+        "Value": protein_prediction[[f"Observed {ProteinOrderMap.M60.label}", f"Observed {ProteinOrderMap.M120.label}", f"Dynamic Predicted {ProteinOrderMap.M180.label}"]].values.flatten(),
         "Type": "Dynamic Predicted"
     })
     df = pd.concat([observed, static, dynamic], ignore_index=True)
@@ -247,7 +247,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in ProteinMap.all_labels()]},
+        category_orders={"Feature": list(ProteinMap.all_labels())},
         facet_col_wrap=4,
         markers=True,
         title="Protein Observations vs Predictions for Each Feature"
@@ -299,7 +299,7 @@ def protein_line_plot_2(protein_prediction: pd.DataFrame):
         line_dash="Type",
         line_dash_map=dash_map,
         facet_col="Feature",
-        category_orders={"Feature": [name for name in ProteinMap.all_labels()]},
+        category_orders={"Feature": list(ProteinMap.all_labels())},
         facet_col_wrap=4,
         markers=True,
         title="Protein Observations vs Predictions for Each Feature"
@@ -332,9 +332,9 @@ def transcriptomics_heatmap(transcriptomics_prediction: pd.DataFrame):
         'HALLMARK_TGF_BETA_SIGNALING': 'TGF-β signaling',
         'HALLMARK_TNFA_SIGNALING_VIA_NFKB': 'TNF-α signaling pathway via NF-κB'
     }
-    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), ["Observed Target", "Static Predicted Target", "Dynamic Predicted Target"]]
+    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), [f"Observed {TranscriptomicsOrderMap.cit2.label}", f"Static Predicted {TranscriptomicsOrderMap.cit2.label}", f"Dynamic Predicted {TranscriptomicsOrderMap.cit2.label}"]]
     transcriptomics_prediction = transcriptomics_prediction.rename(index=rename_dict)
-    transcriptomics_prediction = transcriptomics_prediction.sort_values(by="Observed Target", ascending=False)
+    transcriptomics_prediction = transcriptomics_prediction.sort_values(by=f"Observed {TranscriptomicsOrderMap.cit2.label}", ascending=False)
     fig = px.imshow(
         transcriptomics_prediction,
         color_continuous_scale='Viridis',
@@ -359,9 +359,9 @@ def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
         'HALLMARK_TGF_BETA_SIGNALING': 'TGF-β signaling',
         'HALLMARK_TNFA_SIGNALING_VIA_NFKB': 'TNF-α signaling pathway via NF-κB'
     }
-    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), ["Observed Target", "Static Predicted Target", "Dynamic Predicted Target"]]
+    transcriptomics_prediction = transcriptomics_prediction.loc[list(rename_dict.keys()), [f"Observed {TranscriptomicsOrderMap.cit2.label}", f"Static Predicted {TranscriptomicsOrderMap.cit2.label}", f"Dynamic Predicted {TranscriptomicsOrderMap.cit2.label}"]]
     transcriptomics_prediction = transcriptomics_prediction.rename(index=rename_dict)
-    transcriptomics_prediction = transcriptomics_prediction.sort_values(by="Observed Target", ascending=False)
+    transcriptomics_prediction = transcriptomics_prediction.sort_values(by=f"Observed {TranscriptomicsOrderMap.cit2.label}", ascending=False)
     fig = px.bar(
         transcriptomics_prediction,
         barmode='group',
@@ -374,12 +374,12 @@ def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
 def timeseries_plot(a1, true_a2, true_a3, pred_a2, static_pred_a3, dynamic_pred_a3):
     figs = []
     paddings = {
-        "Dynamic Compliance (mL/cmH₂O)": 30,
-        "Peak Airway Pressure (cmH₂O)": 5,
-        "Mean Airway Pressure (cmH₂O)": 3,
-        "Expiratory Volume (mL)": 50
+        PerBreathParameterMap.Dy_comp.label: 30,
+        PerBreathParameterMap.P_peak.label: 5,
+        PerBreathParameterMap.P_mean.label: 3,
+        PerBreathParameterMap.Ex_vol.label: 50
     }
-    for parameter in ["Dynamic Compliance (mL/cmH₂O)", "Peak Airway Pressure (cmH₂O)", "Mean Airway Pressure (cmH₂O)", "Expiratory Volume (mL)"]:
+    for parameter in PerBreathParameterMap.all_labels():
         parameter_no_unit = parameter.split(" (")[0]
         param_a1 = pd.DataFrame({
             "Breath": np.arange(50),
