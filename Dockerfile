@@ -19,6 +19,7 @@ COPY ./GRU ./GRU
 COPY ./XGB ./XGB
 COPY ./inference ./inference
 COPY ./app.py ./app.py
+COPY ./main.py ./main.py
 
 EXPOSE 8501
 
