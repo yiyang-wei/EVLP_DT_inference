@@ -95,7 +95,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, col_wrap: int
         legend_title_text="",
         legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5),
         margin=dict(t=100),
-        height=800,
+        height=800 + 400 * (6 - col_wrap),
     )
 
     for i, annotation in enumerate(fig.layout.annotations):
