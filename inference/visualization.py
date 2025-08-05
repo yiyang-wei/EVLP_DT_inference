@@ -15,7 +15,7 @@ dash_map = {
 }
 
 
-def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, col_wrap: int = 6):
+def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, wide: bool = True):
     hourly_prediction = hourly_prediction.drop(index=excluded_hourly_features_in_display, errors='ignore')
     n_features = len(hourly_prediction.index)
     observed = pd.DataFrame({
@@ -77,7 +77,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, col_wrap: int
         line_dash_map=dash_map,
         facet_col="Feature",
         category_orders={"Feature": hourly_features_to_display},
-        facet_col_wrap=col_wrap,
+        facet_col_wrap=6 if wide else 3,
         markers=True,
         title="Hourly Observations vs Predictions for Each Feature"
     )
@@ -95,7 +95,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, col_wrap: int
         legend_title_text="",
         legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5),
         margin=dict(t=100),
-        height=800 + 400 * (6 - col_wrap),
+        height=800 if wide else 2000,
     )
 
     for i, annotation in enumerate(fig.layout.annotations):
@@ -215,7 +215,7 @@ def image_pc_scatter_plot(image_prediction: pd.DataFrame):
     return fig
 
 
-def protein_line_plot(protein_prediction: pd.DataFrame):
+def protein_line_plot(protein_prediction: pd.DataFrame, wide: bool = True):
     n_features = len(protein_prediction.index)
     observed = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
@@ -248,7 +248,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame):
         line_dash_map=dash_map,
         facet_col="Feature",
         category_orders={"Feature": list(ProteinMap.all_labels())},
-        facet_col_wrap=4,
+        facet_col_wrap=4 if wide else 2,
         markers=True,
         title="Protein Observations vs Predictions for Each Feature"
     )
