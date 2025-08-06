@@ -375,10 +375,10 @@ def transcriptomics_bar_plot(transcriptomics_prediction: pd.DataFrame):
 def timeseries_plot(a1, true_a2, true_a3, pred_a2, static_pred_a3, dynamic_pred_a3):
     figs = []
     paddings = {
-        PerBreathParameterMap.Dy_comp.label: 30,
-        PerBreathParameterMap.P_peak.label: 5,
-        PerBreathParameterMap.P_mean.label: 3,
-        PerBreathParameterMap.Ex_vol.label: 50
+        PerBreathParameterMap.Dy_comp.label: 60,
+        PerBreathParameterMap.P_peak.label: 13,
+        PerBreathParameterMap.P_mean.label: 8,
+        PerBreathParameterMap.Ex_vol.label: 80
     }
     for parameter in PerBreathParameterMap.all_labels():
         parameter_no_unit = parameter.split(" (")[0]

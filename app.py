@@ -106,7 +106,7 @@ def check_modality_missing(dfs):
     dynamic_gru = static_gru and ts_missing["2Hr"][0] == "✅"
 
     if xgb_missing:
-        st.warning("DT will NOT be optimal due to missing data.")
+        st.warning("DT result will be affected due to missing values in input.")
     if not static_gru:
         st.warning("Static GRU inference will NOT be performed due to missing 1Hr per-breath data.")
     if not dynamic_gru:
@@ -186,6 +186,8 @@ def main():
 
     st.title(":material/respiratory_rate: Digital Twin of Ex-Vivo Human Lungs ")
 
+    st.info("❤️ Welcome to the Digital Twin of Ex-Vivo Human Lungs App! 👋 This app is best viewed in a desktop browser in light mode. 🖥️ To change the theme, navigate to the top right corner of the page and select '⋮' > 'Settings'.")
+
     st.subheader("Step 0: Download Models and Data")
 
     try:
@@ -208,17 +210,20 @@ def main():
 
     st.subheader("Step 1: Prepare Data")
 
+    st.info("Two options available: Please select if you want to **Use Demo Data** :bar_chart: OR **Use Your Own Data** :file_folder: to get started!")
+
     col1, col2 = st.columns(2, border=True)
 
     with col1:
         st.button(
-            "✔ " * (st.session_state["data_mode"] == "demo") + "Use Demo Data",
+            "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else "Use Demo Data",
             type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
             use_container_width=True,
             on_click=lambda: st.session_state.update(data_mode="demo"),
         )
         demo_files = data_folder.glob(demo_case_prefix + "*")
         demo_names = [file.stem for file in demo_files if file.is_file()]
+        demo_names.sort()
         selected_demo_case = st.selectbox(
             label="Select a Demo Case",
             options=demo_names,
@@ -228,7 +233,7 @@ def main():
 
     with col2:
         st.button(
-            "✔ " * (st.session_state["data_mode"] == "custom") + "Use Your Own Data",
+            "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else "Use Your Own Data",
             type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
             use_container_width=True,
             on_click=lambda: st.session_state.update(data_mode="custom"),
@@ -355,6 +360,8 @@ def main():
         #     use_container_width=True,
         # )
 
+        st.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
+
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
@@ -400,7 +407,7 @@ def main():
         col2.plotly_chart(figs[3], use_container_width=True)
 
     else:
-        st.warning("No predictions available to view. Please run the inference first.")
+        st.warning("No predictions available to view. Please run the inference in **Step 2** first.")
 
     st.subheader("Step 4: Download Predictions")
     if prediction_save_path.exists():
@@ -415,7 +422,7 @@ def main():
             use_container_width=True
         )
     else:
-        st.warning("No predictions available to download. Please run the inference first.")
+        st.warning("No predictions available to download. Please run the inference in **Step 2** first.")
 
 
 if __name__ == "__main__":
