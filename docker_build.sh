@@ -1,1 +1,2 @@
-docker build -t dt-lung .
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 -t sagelabuhn/dt_lung:latest --push .
