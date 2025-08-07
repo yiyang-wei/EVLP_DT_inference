@@ -379,10 +379,10 @@ def main():
             transcriptomics_heatmap(predictions_display["Transcriptomics Prediction"]),
             use_container_width=True,
         )
-        transcriptomics_pred_tab.plotly_chart(
-            transcriptomics_bar_plot(predictions_display["Transcriptomics Prediction"]),
-            use_container_width=True,
-        )
+        # transcriptomics_pred_tab.plotly_chart(
+        #     transcriptomics_bar_plot(predictions_display["Transcriptomics Prediction"]),
+        #     use_container_width=True,
+        # )
 
         time_series_pred_tab.markdown("**2Hr Per-breath Prediction**")
         time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"])
