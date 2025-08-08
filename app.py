@@ -53,6 +53,14 @@ def download_huggingface(data_folder, model_folder):
         retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, local_dir_use_symlinks=False)
     st.success(f"Successfully downloaded model from huggingface.co/{model_repo_id}")
 
+def selected_use_demo():
+    st.session_state.update(data_mode="demo")
+    st.toast("Switched to Use Demo Data", icon=":material/check_circle:")
+
+def selected_use_custom():
+    st.session_state.update(data_mode="custom")
+    st.toast("Switched to Use Your Own Data", icon=":material/check_circle:")
+
 def check_missing(data, tolerance=1.0):
     good = "✅ All Good"
     missing = "❌ {0:.1%} Missing"
@@ -172,8 +180,8 @@ def main():
 
     if "huggingface_downloaded" not in st.session_state:
         st.session_state["huggingface_downloaded"] = False
-    if "data_mode" not in st.session_state:
-        st.session_state["data_mode"] = "demo"
+    # if "data_mode" not in st.session_state:
+    #     st.session_state["data_mode"] = "demo"
 
     data_folder = Path("Data")
     data_folder.mkdir(parents=True, exist_ok=True)
@@ -194,14 +202,13 @@ def main():
         if not st.session_state["huggingface_downloaded"]:
             download_huggingface(data_folder, model_folder)
             st.session_state["huggingface_downloaded"] = True
-        else:
-            st.success("Models and data already downloaded. You can redownload them if needed.")
+        st.success("Models and data already downloaded. You can redownload them if needed.")
     except Exception as e:
-        st.error(f"Failed to download from huggingface due to internet issue. Please try again in a few seconds.")
+        st.error(f"Failed to download from huggingface due to internet issue. Please try the redownload button below in a few seconds.")
         st.session_state["huggingface_downloaded"] = False
     finally:
         redownload_huggingface = st.button(
-            label="Redownload Models and Data",
+            label="Optional: Redownload Models and Data",
             icon=":material/refresh:",
             use_container_width=True,
         )
@@ -214,47 +221,57 @@ def main():
 
     col1, col2 = st.columns(2, border=True)
 
-    with col1:
-        st.button(
-            "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else "Use Demo Data",
-            type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
-            use_container_width=True,
-            on_click=lambda: st.session_state.update(data_mode="demo"),
-        )
-        demo_files = data_folder.glob(demo_case_prefix + "*")
-        demo_names = [file.stem for file in demo_files if file.is_file()]
-        demo_names.sort()
-        selected_demo_case = st.selectbox(
-            label="Select a Demo Case",
-            options=demo_names,
-            index=0,
-            disabled=st.session_state["data_mode"] != "demo",
-        )
+    data_mode = col1.radio(
+        label="Use Demo Data or Your Own Data",
+        options=["Use Demo Data", "Use Your Own Data"],
+        index=0,
+    )
 
     with col2:
-        st.button(
-            "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else "Use Your Own Data",
-            type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
-            use_container_width=True,
-            on_click=lambda: st.session_state.update(data_mode="custom"),
-        )
 
-        st.download_button(
-            label="Click Here to Download the Template (Excel File)",
-            data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
-            file_name="DT Lung Demo Template.xlsx",
-            mime="application/vnd.ms-excel",
-            type='tertiary',
-            disabled=st.session_state["data_mode"] != "custom",
-        )
-        uploaded_case = st.file_uploader(
-            label="Upload Your Own Data (must be an Excel file with the same format as the template)",
-            type=["xlsx"],
-            accept_multiple_files=False,
-            disabled=st.session_state["data_mode"] != "custom",
-        )
+        # with col1:
+        #     st.button(
+        #         "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else "Use Demo Data",
+        #         type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
+        #         use_container_width=True,
+        #         on_click=selected_use_demo,
+        #     )
+        if data_mode == "Use Demo Data":
+            demo_files = data_folder.glob(demo_case_prefix + "*")
+            demo_names = [file.stem for file in demo_files if file.is_file()]
+            demo_names.sort()
+            selected_demo_case = st.selectbox(
+                label="Select a Demo Case",
+                options=demo_names,
+                index=0,
+                # disabled=st.session_state["data_mode"] != "demo",
+            )
 
-    if st.session_state["data_mode"] == "demo":
+        # with col2:
+        #     st.button(
+        #         "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else "Use Your Own Data",
+        #         type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
+        #         use_container_width=True,
+        #         on_click=selected_use_custom,
+        #     )
+        elif data_mode == "Use Your Own Data":
+            st.download_button(
+                label="Click Here to Download the Template (Excel File)",
+                data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
+                file_name="DT Lung Demo Template.xlsx",
+                mime="application/vnd.ms-excel",
+                type='tertiary',
+                # disabled=st.session_state["data_mode"] != "custom",
+            )
+            uploaded_case = st.file_uploader(
+                label="Upload Your Own Data (must be an Excel file with the same format as the template)",
+                type=["xlsx"],
+                accept_multiple_files=False,
+                # disabled=st.session_state["data_mode"] != "custom",
+            )
+
+    # if st.session_state["data_mode"] == "demo":
+    if data_mode == "Use Demo Data":
         case_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
         selected_case = selected_demo_case
     else:
@@ -264,6 +281,8 @@ def main():
     if case_dfs is None:
         st.info("Upload an Excel to see the data preview and run inference.")
         return
+    else:
+        st.success(f"Successfully loaded {selected_case}. You can preview the data below and proceed to **Step 2** run inference .")
 
     case_dfs[InputSheets.hourly_lung_function] = case_dfs[InputSheets.hourly_lung_function].reindex(list(HourlyMap.all_labels()))
     hourly_display_df = case_dfs[InputSheets.hourly_lung_function]
@@ -276,7 +295,36 @@ def main():
         case_dfs[InputSheets.per_breath_h3]
     ]
 
-    with (st.expander(f"Data Preview for {selected_case}", expanded=True)):
+    # st.markdown("""
+    #     <style>
+    #     .stDataFrame .slick-cell {
+    #         pointer-events: none;
+    #     }
+    #     </style>
+    # """, unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        /* Remove focus outline and padding shift */
+        .stDataFrame div:focus {
+            outline: none !important;
+        }
+
+        .stDataFrame .slick-cell:focus {
+            outline: none !important;
+        }
+
+        .stDataFrame .slick-cell {
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+        }
+
+        .stDataFrame .slick-cell:active {
+            padding-left: 4px !important;
+        }
+
+        </style>
+    """, unsafe_allow_html=True)
+    with (st.expander(f"Data Preview for {selected_case} (Data editing not allowed in this preview)", expanded=True)):
         (
             hourly_display_tab,
             image_pc_display_tab,
@@ -348,7 +396,7 @@ def main():
                 "Per-breath Predictions",
             ])
 
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display])
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.set_properties(**{'background-color': 'lightgrey'}))
         hourly_pred_tab.plotly_chart(
             hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
             use_container_width=True,
@@ -360,9 +408,10 @@ def main():
         #     use_container_width=True,
         # )
 
-        st.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
+        image_pc_pred_tab.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
 
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
+        protein_pred_tab.caption("*Only showing DT-centric protein inference results.")
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
             use_container_width=True,
