@@ -222,6 +222,8 @@ class XGBInference:
         protein_predictions_display[f"Static Predicted {ProteinOrderMap.M120.label}"] = protein_pred_h2_display[ProteinOrderMap.M120.label].astype(float).round(1)
         protein_predictions_display[f"Static Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_static_display[ProteinOrderMap.M180.label].astype(float).round(1)
         protein_predictions_display[f"Dynamic Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_dynamic_display[ProteinOrderMap.M180.label].astype(float).round(1)
+        protein_predictions_display.loc[ProteinMap.IL_6.label] = protein_predictions_display.loc[ProteinMap.IL_6.label].round()
+        protein_predictions_display.loc[ProteinMap.IL_8.label] = protein_predictions_display.loc[ProteinMap.IL_8.label].round()
 
         transcriptomics_pred_static_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_static.iloc[0])
         transcriptomics_pred_dynamic_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_dynamic.iloc[0])

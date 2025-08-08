@@ -32,7 +32,7 @@ def load_excel_binary_cache(file_path, stat):
     with open(file_path, "rb") as f:
         return f.read()
 
-def retry_snapshot_download(max_attempts=5, delay=3, *args, **kwargs):
+def retry_snapshot_download(max_attempts=3, delay=10, *args, **kwargs):
     for attempt in range(max_attempts):
         try:
             return snapshot_download(*args, **kwargs)
@@ -440,7 +440,8 @@ def main():
     run_inference = st.button(
         label="Run Inference",
         icon=":material/play_arrow:",
-        use_container_width=True
+        use_container_width=True,
+        on_click=lambda: st.session_state.update(huggingface_downloaded=False)
     )
 
     if run_inference:
