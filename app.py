@@ -167,6 +167,7 @@ def run_gru_inference(model_folder, demo_dfs, static_gru=True, dynamic_gru=True)
             time_series_inference.dynamic_inference()
         end = time.time()
         st.success(f"Dynamic Time Series Inference completed in {end - start:.2f} seconds.")
+    time_series_inference.get_pred_display()
     return time_series_inference
 
 def pick_base_hex(col_name: str):
@@ -314,16 +315,20 @@ def main():
         )
         if redownload_huggingface:
             download_huggingface(data_folder, model_folder)
+        if not st.session_state["huggingface_downloaded"]:
+            st.warning("Please redownload the models and data to proceed with the app.")
+            return
 
     st.subheader("Step 1: Prepare Data")
 
     st.info("Two options available: Please select if you want to :bar_chart: **Use Demo Data** OR :file_folder: **Use Your Own Data** to get started!")
 
     col1, col2 = st.columns(2, border=True)
-
+    data_mode_demo = ":bar_chart: **Use Demo Data**"
+    data_mode_custom = ":file_folder: **Use Your Own Data**"
     data_mode = col1.radio(
         label="Use Demo Data or Your Own Data",
-        options=[":bar_chart: **Use Demo Data**", ":file_folder: **Use Your Own Data**"],
+        options=[data_mode_demo, data_mode_custom],
         index=0,
     )
 
@@ -331,12 +336,12 @@ def main():
 
         # with col1:
         #     st.button(
-        #         "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else ":bar_chart: **Use Demo Data**",
+        #         "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else "Use Demo Data",
         #         type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
         #         use_container_width=True,
         #         on_click=selected_use_demo,
         #     )
-        if data_mode == ":bar_chart: **Use Demo Data**":
+        if data_mode == data_mode_demo:
             demo_files = data_folder.glob(demo_case_prefix + "*")
             demo_names = [file.stem for file in demo_files if file.is_file()]
             demo_names.sort()
@@ -349,12 +354,12 @@ def main():
 
         # with col2:
         #     st.button(
-        #         "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else ":file_folder: **Use Your Own Data**",
+        #         "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else "Use Your Own Data",
         #         type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
         #         use_container_width=True,
         #         on_click=selected_use_custom,
         #     )
-        elif data_mode == ":file_folder: **Use Your Own Data**":
+        elif data_mode == data_mode_custom:
             st.download_button(
                 label="Click Here to Download the Template (Excel File)",
                 data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
@@ -371,7 +376,7 @@ def main():
             )
 
     # if st.session_state["data_mode"] == "demo":
-    if data_mode == ":bar_chart: **Use Demo Data**":
+    if data_mode == data_mode_demo:
         case_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
         selected_case = selected_demo_case
     else:
@@ -395,35 +400,6 @@ def main():
         case_dfs[InputSheets.per_breath_h3]
     ]
 
-    # st.markdown("""
-    #     <style>
-    #     .stDataFrame .slick-cell {
-    #         pointer-events: none;
-    #     }
-    #     </style>
-    # """, unsafe_allow_html=True)
-    st.markdown("""
-        <style>
-        /* Remove focus outline and padding shift */
-        .stDataFrame div:focus {
-            outline: none !important;
-        }
-
-        .stDataFrame .slick-cell:focus {
-            outline: none !important;
-        }
-
-        .stDataFrame .slick-cell {
-            padding-left: 4px !important;
-            padding-right: 4px !important;
-        }
-
-        .stDataFrame .slick-cell:active {
-            padding-left: 4px !important;
-        }
-
-        </style>
-    """, unsafe_allow_html=True)
     with (st.expander(f"Data Preview for {selected_case} (Data editing not allowed in this preview)", expanded=True)):
         (
             hourly_display_tab,
@@ -474,9 +450,8 @@ def main():
         with pd.ExcelWriter(prediction_save_path, mode='w') as writer:
             for sheet_name, df in xgb_inference.predictions_display.items():
                 df.to_excel(writer, sheet_name=sheet_name)
-            gru_inference.pred_a2.to_excel(writer, sheet_name=OutputSheets.per_breath_h2)
-            gru_inference.static_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_static)
-            gru_inference.dynamic_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_dynamic)
+            for sheet_name, df in gru_inference.pred_display.items():
+                df.to_excel(writer, sheet_name=sheet_name)
         predictions_display = load_excel(prediction_save_path)
 
     st.subheader("Step 3: View Results")
@@ -489,22 +464,22 @@ def main():
                 transcriptomics_pred_tab,
                 time_series_pred_tab,
             ) = st.tabs([
-                "Hourly Lung Function Prediction",
-                "Lung X-ray Image Prediction",
-                "Protein Prediction",
-                "Transcriptomics Prediction",
+                OutputSheets.hourly_lung_function,
+                OutputSheets.lung_image,
+                OutputSheets.protein,
+                OutputSheets.transcriptomics,
                 "Per-breath Predictions",
             ])
 
-        highlighter = make_row_band_tint(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display])
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.apply(highlighter, axis=1).format(nice_number))
+        highlighter = make_row_band_tint(predictions_display[OutputSheets.hourly_lung_function].loc[hourly_features_to_display])
+        hourly_pred_tab.dataframe(predictions_display[OutputSheets.hourly_lung_function].loc[hourly_features_to_display].style.apply(highlighter, axis=1).format(nice_number))
         hourly_pred_tab.plotly_chart(
-            hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
+            hourly_all_features_line_plot(predictions_display[OutputSheets.hourly_lung_function]),
             use_container_width=True,
         )
 
-        highlighter = make_row_band_tint(predictions_display["Lung X-ray Image Prediction"])
-        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"].style.apply(highlighter, axis=1).format(nice_number))
+        highlighter = make_row_band_tint(predictions_display[OutputSheets.lung_image])
+        image_pc_pred_tab.dataframe(predictions_display[OutputSheets.lung_image].style.apply(highlighter, axis=1).format(nice_number))
         # image_pc_pred_tab.plotly_chart(
         #     image_pc_scatter_plot(predictions_display["Lung X-ray Image Prediction"]),
         #     use_container_width=True,
@@ -512,11 +487,11 @@ def main():
 
         image_pc_pred_tab.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
 
-        highlighter = make_row_band_tint(predictions_display["Protein Prediction"])
-        protein_pred_tab.dataframe(predictions_display["Protein Prediction"].style.apply(highlighter, axis=1).format(nice_number))
+        highlighter = make_row_band_tint(predictions_display[OutputSheets.protein])
+        protein_pred_tab.dataframe(predictions_display[OutputSheets.protein].style.apply(highlighter, axis=1).format(nice_number))
         protein_pred_tab.caption("*Only displaying hourly protein inference results for DT-centric approach.")
         protein_pred_tab.plotly_chart(
-            protein_line_plot(predictions_display["Protein Prediction"]),
+            protein_line_plot(predictions_display[OutputSheets.protein]),
             use_container_width=True,
             key="protein_line_plot_1"
         )
@@ -526,10 +501,10 @@ def main():
         #     key="protein_line_plot_2"
         # )
 
-        highlighter = make_row_band_tint(predictions_display["Transcriptomics Prediction"])
-        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"].style.apply(highlighter, axis=1).format(nice_number))
+        highlighter = make_row_band_tint(predictions_display[OutputSheets.transcriptomics])
+        transcriptomics_pred_tab.dataframe(predictions_display[OutputSheets.transcriptomics].style.apply(highlighter, axis=1).format(nice_number))
         transcriptomics_pred_tab.plotly_chart(
-            transcriptomics_heatmap(predictions_display["Transcriptomics Prediction"]),
+            transcriptomics_heatmap(predictions_display[OutputSheets.transcriptomics]),
             use_container_width=True,
         )
         # transcriptomics_pred_tab.plotly_chart(

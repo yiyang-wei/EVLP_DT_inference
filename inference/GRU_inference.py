@@ -7,6 +7,8 @@ from GRU.GRU import GRU
 import pathlib
 from safetensors.torch import load_file
 
+from .reformat import *
+
 static_setups = ["A1F50_A2F50", "A1F50PA2F50_A3F50", "A1F50_A3F50"]
 dynamic_setups = ["A1F50A2F50_A3F50"]
 parameter_names = {
@@ -46,6 +48,8 @@ class TimeSeriesInference:
         self.pred_a2 = None
         self.static_pred_a3 = None
         self.dynamic_pred_a3 = None
+
+        self.pred_display = None
 
     def load_model(self, stage: str, param: str) -> torch.nn.Module:
         path = self.model_folder / "GRU" / stage / f"{param}.safetensors"
@@ -118,3 +122,17 @@ class TimeSeriesInference:
         dynamic_pred_a3_results = self.inference_all_parameters(a1_a2, "A1F50A2F50_A3F50")
         for param, pred in dynamic_pred_a3_results.items():
             self.dynamic_pred_a3[param] = pred
+
+    def get_pred_display(self):
+        dp_map = {
+            PerBreathParameterMap.Dy_comp.label: 1,
+            PerBreathParameterMap.P_peak.label: 1,
+            PerBreathParameterMap.P_mean.label: 1,
+            PerBreathParameterMap.Ex_vol.label: 0
+        }
+        self.pred_display = {
+            OutputSheets.per_breath_h2: self.pred_a2.round(dp_map),
+            OutputSheets.per_breath_h3_static: self.static_pred_a3.round(dp_map),
+            OutputSheets.per_breath_h3_dynamic: self.dynamic_pred_a3.round(dp_map),
+        }
+

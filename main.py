@@ -42,15 +42,15 @@ for demo_case in data_folder.glob("DT Lung Demo Case *.xlsx"):
     time_series_inference.load_input_data(demo_case_dfs)
     time_series_inference.static_inference()
     time_series_inference.dynamic_inference()
+    time_series_inference.get_pred_display()
 
     save_path = output_folder / f"{demo_case_name} predictions.xlsx"
     print(f"\tSaving output to' {save_path}'...")
     with pd.ExcelWriter(save_path, mode='w') as writer:
         for sheet_name, df in xgb_inference.predictions_display.items():
             df.to_excel(writer, sheet_name=sheet_name)
-        time_series_inference.pred_a2.to_excel(writer, sheet_name=OutputSheets.per_breath_h2)
-        time_series_inference.static_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_static)
-        time_series_inference.dynamic_pred_a3.to_excel(writer, sheet_name=OutputSheets.per_breath_h3_dynamic)
+        for sheet_name, df in time_series_inference.pred_display.items():
+            df.to_excel(writer, sheet_name=sheet_name)
     print()
 
     inferences[demo_case_name] = {
