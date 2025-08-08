@@ -262,6 +262,13 @@ def make_row_band_tint(df, color=None):
 
     return _fn
 
+def nice_number(x):
+    if pd.isna(x):
+        return ""
+    if not isinstance(x, (int, float, np.integer, np.floating)):
+        return x
+    return f"{x:g}"
+
 def main():
 
     st.set_page_config(
@@ -490,14 +497,14 @@ def main():
             ])
 
         highlighter = make_row_band_tint(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display])
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.apply(highlighter, axis=1))
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.apply(highlighter, axis=1).format(nice_number))
         hourly_pred_tab.plotly_chart(
             hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
             use_container_width=True,
         )
 
         highlighter = make_row_band_tint(predictions_display["Lung X-ray Image Prediction"])
-        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"].style.apply(highlighter, axis=1))
+        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"].style.apply(highlighter, axis=1).format(nice_number))
         # image_pc_pred_tab.plotly_chart(
         #     image_pc_scatter_plot(predictions_display["Lung X-ray Image Prediction"]),
         #     use_container_width=True,
@@ -506,7 +513,7 @@ def main():
         image_pc_pred_tab.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
 
         highlighter = make_row_band_tint(predictions_display["Protein Prediction"])
-        protein_pred_tab.dataframe(predictions_display["Protein Prediction"].style.apply(highlighter, axis=1))
+        protein_pred_tab.dataframe(predictions_display["Protein Prediction"].style.apply(highlighter, axis=1).format(nice_number))
         protein_pred_tab.caption("*Only showing DT-centric protein inference results.")
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
@@ -520,7 +527,7 @@ def main():
         # )
 
         highlighter = make_row_band_tint(predictions_display["Transcriptomics Prediction"])
-        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"].style.apply(highlighter, axis=1))
+        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"].style.apply(highlighter, axis=1).format(nice_number))
         transcriptomics_pred_tab.plotly_chart(
             transcriptomics_heatmap(predictions_display["Transcriptomics Prediction"]),
             use_container_width=True,
@@ -532,14 +539,14 @@ def main():
 
         time_series_pred_tab.markdown("**2Hr Per-breath Prediction**")
         highlighter = make_row_band_tint(predictions_display["2Hr Per-breath Prediction"], color="#E07F26")
-        time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"].style.apply(highlighter, axis=1))
+        time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"].style.apply(highlighter, axis=1).format(nice_number))
         col1, col2 = time_series_pred_tab.columns(2)
         col1.markdown("**3Hr Per-breath Static Prediction**")
         highlighter = make_row_band_tint(predictions_display["3Hr Per-breath Static"], color="#E07F26")
-        col1.dataframe(predictions_display["3Hr Per-breath Static"].style.apply(highlighter, axis=1))
+        col1.dataframe(predictions_display["3Hr Per-breath Static"].style.apply(highlighter, axis=1).format(nice_number))
         col2.markdown("**3Hr Per-breath Dynamic Prediction**")
         highlighter = make_row_band_tint(predictions_display["3Hr Per-breath Dynamic"], color="#6370C0")
-        col2.dataframe(predictions_display["3Hr Per-breath Dynamic"].style.apply(highlighter, axis=1))
+        col2.dataframe(predictions_display["3Hr Per-breath Dynamic"].style.apply(highlighter, axis=1).format(nice_number))
 
         figs = timeseries_plot(
             case_dfs[InputSheets.per_breath_h1],
