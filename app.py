@@ -169,6 +169,99 @@ def run_gru_inference(model_folder, demo_dfs, static_gru=True, dynamic_gru=True)
         st.success(f"Dynamic Time Series Inference completed in {end - start:.2f} seconds.")
     return time_series_inference
 
+def pick_base_hex(col_name: str):
+    col_color = {
+        "Observed": "#808080",
+        "Dynamic Predicted": "#6370C0",
+        "Predicted": "#E07F26",
+    }
+    keys_by_priority = ["Dynamic Predicted", "Predicted", "Observed"]
+    for k in keys_by_priority:
+        if k in col_name:
+            return col_color[k]
+    return None
+
+def _hex_to_rgb(h):
+    h = h.lstrip('#')
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+def _rgb_to_hex(rgb):
+    return "#{:02X}{:02X}{:02X}".format(*rgb)
+
+def _mix_with_white(rgb, mix):
+    return tuple(int(round(rgb[i] * (1 - mix) + 255 * mix)) for i in range(3))
+
+def row_heat_tint(row, color=None):
+    LIGHT_MIX = 0.8
+    DARK_MIX  = 0.5
+
+    vals = pd.to_numeric(row, errors='coerce').astype(float)
+    finite = np.isfinite(vals.values)
+    if not finite.any():
+        out = []
+        for col in row.index:
+            base_hex = color or pick_base_hex(col)
+            if base_hex is None:
+                out.append("background-color: transparent")
+            else:
+                base_rgb = _hex_to_rgb(base_hex)
+                col_hex = _rgb_to_hex(_mix_with_white(base_rgb, LIGHT_MIX))
+                out.append(f"background-color: {col_hex}")
+        return out
+
+    vmin = float(np.nanmin(vals.values))
+    vmax = float(np.nanmax(vals.values))
+    denom = vmax - vmin
+
+    if not np.isfinite(denom) or denom == 0.0:
+        out = []
+        for col in row.index:
+            base_hex = pick_base_hex(col)
+            if base_hex is None:
+                out.append("background-color: transparent")
+            else:
+                base_rgb = _hex_to_rgb(base_hex)
+                col_hex = _rgb_to_hex(_mix_with_white(base_rgb, LIGHT_MIX))
+                out.append(f"background-color: {col_hex}")
+        return out
+
+    norm = (vals - vmin) / denom
+
+    out = []
+    for col, v in zip(row.index, norm):
+        base_hex = pick_base_hex(col)
+        if base_hex is None or not np.isfinite(v):
+            out.append("background-color: transparent")
+            continue
+        base_rgb = _hex_to_rgb(base_hex)
+        mix = LIGHT_MIX - float(v) * (LIGHT_MIX - DARK_MIX)
+        col_hex = _rgb_to_hex(_mix_with_white(base_rgb, mix))
+        out.append(f"background-color: {col_hex}")
+    return out
+
+def make_row_band_tint(df, color=None):
+    index_list = list(df.index)
+
+    def _fn(row):
+        LIGHT_MIX = 0.7
+        ALT_MIX   = 0.6
+        pos = index_list.index(row.name)
+        is_alt = (pos % 2 == 0)
+        mix = ALT_MIX if is_alt else LIGHT_MIX
+
+        out = []
+        for col in row.index:
+            base_hex = color or pick_base_hex(col)
+            if base_hex is None:
+                out.append("background-color: transparent")
+            else:
+                base_rgb = _hex_to_rgb(base_hex)
+                col_hex = _rgb_to_hex(_mix_with_white(base_rgb, mix))
+                out.append(f"background-color: {col_hex}")
+        return out
+
+    return _fn
+
 def main():
 
     st.set_page_config(
@@ -396,13 +489,15 @@ def main():
                 "Per-breath Predictions",
             ])
 
-        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.set_properties(**{'background-color': 'lightgrey'}))
+        highlighter = make_row_band_tint(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display])
+        hourly_pred_tab.dataframe(predictions_display["Hourly Lung Function Prediction"].loc[hourly_features_to_display].style.apply(highlighter, axis=1))
         hourly_pred_tab.plotly_chart(
             hourly_all_features_line_plot(predictions_display["Hourly Lung Function Prediction"]),
             use_container_width=True,
         )
 
-        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"])
+        highlighter = make_row_band_tint(predictions_display["Lung X-ray Image Prediction"])
+        image_pc_pred_tab.dataframe(predictions_display["Lung X-ray Image Prediction"].style.apply(highlighter, axis=1))
         # image_pc_pred_tab.plotly_chart(
         #     image_pc_scatter_plot(predictions_display["Lung X-ray Image Prediction"]),
         #     use_container_width=True,
@@ -410,7 +505,8 @@ def main():
 
         image_pc_pred_tab.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
 
-        protein_pred_tab.dataframe(predictions_display["Protein Prediction"])
+        highlighter = make_row_band_tint(predictions_display["Protein Prediction"])
+        protein_pred_tab.dataframe(predictions_display["Protein Prediction"].style.apply(highlighter, axis=1))
         protein_pred_tab.caption("*Only showing DT-centric protein inference results.")
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
@@ -423,7 +519,8 @@ def main():
         #     key="protein_line_plot_2"
         # )
 
-        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"])
+        highlighter = make_row_band_tint(predictions_display["Transcriptomics Prediction"])
+        transcriptomics_pred_tab.dataframe(predictions_display["Transcriptomics Prediction"].style.apply(highlighter, axis=1))
         transcriptomics_pred_tab.plotly_chart(
             transcriptomics_heatmap(predictions_display["Transcriptomics Prediction"]),
             use_container_width=True,
@@ -434,12 +531,15 @@ def main():
         # )
 
         time_series_pred_tab.markdown("**2Hr Per-breath Prediction**")
-        time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"])
+        highlighter = make_row_band_tint(predictions_display["2Hr Per-breath Prediction"], color="#E07F26")
+        time_series_pred_tab.dataframe(predictions_display["2Hr Per-breath Prediction"].style.apply(highlighter, axis=1))
         col1, col2 = time_series_pred_tab.columns(2)
         col1.markdown("**3Hr Per-breath Static Prediction**")
-        col1.dataframe(predictions_display["3Hr Per-breath Static"])
+        highlighter = make_row_band_tint(predictions_display["3Hr Per-breath Static"], color="#E07F26")
+        col1.dataframe(predictions_display["3Hr Per-breath Static"].style.apply(highlighter, axis=1))
         col2.markdown("**3Hr Per-breath Dynamic Prediction**")
-        col2.dataframe(predictions_display["3Hr Per-breath Dynamic"])
+        highlighter = make_row_band_tint(predictions_display["3Hr Per-breath Dynamic"], color="#6370C0")
+        col2.dataframe(predictions_display["3Hr Per-breath Dynamic"].style.apply(highlighter, axis=1))
 
         figs = timeseries_plot(
             case_dfs[InputSheets.per_breath_h1],
