@@ -47,10 +47,10 @@ def download_huggingface(data_folder, model_folder):
     model_repo_id = "SageLabUHN/DT_Lung"
     data_repo_id = "SageLabUHN/DT_Lung_Demo_Data"
     with st.spinner(f"Downloading dataset from huggingface.co/datasets/{data_repo_id}"):
-        retry_snapshot_download(repo_id=data_repo_id, repo_type="dataset", local_dir=data_folder, local_dir_use_symlinks=False)
+        retry_snapshot_download(repo_id=data_repo_id, repo_type="dataset", local_dir=data_folder, max_workers=4)
     st.success(f"Successfully downloaded dataset from huggingface.co/datasets/{data_repo_id}")
     with st.spinner(f"Downloading model from huggingface.co/{model_repo_id}"):
-        retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, local_dir_use_symlinks=False)
+        retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, max_workers=4, ignore_patterns="*.csv")
     st.success(f"Successfully downloaded model from huggingface.co/{model_repo_id}")
 
 def selected_use_demo():
@@ -243,8 +243,8 @@ def make_row_band_tint(df, color=None):
     index_list = list(df.index)
 
     def _fn(row):
-        LIGHT_MIX = 0.7
-        ALT_MIX   = 0.6
+        LIGHT_MIX = 0.9
+        ALT_MIX   = 0.8
         pos = index_list.index(row.name)
         is_alt = (pos % 2 == 0)
         mix = ALT_MIX if is_alt else LIGHT_MIX
@@ -292,9 +292,9 @@ def main():
 
     demo_case_prefix = "DT Lung Demo Case "
 
-    st.title(":material/respiratory_rate: Digital Twin of Ex-Vivo Human Lungs ")
+    st.title(":material/respiratory_rate: Digital Twins of Ex-Vivo Human Lungs ")
 
-    st.info("❤️ Welcome to the Digital Twin of Ex-Vivo Human Lungs App! 👋 This app is best viewed in a desktop browser in light mode. 🖥️ To change the theme, navigate to the top right corner of the page and select '⋮' > 'Settings'.")
+    st.info("❤️ Welcome to the Digital Twin of Ex-Vivo Human Lungs App! This app is best viewed in a desktop browser in light mode. 🖥️ To change the theme, navigate to the top right corner of the page and select '⋮' > 'Settings'.")
 
     st.subheader("Step 0: Download Models and Data")
 
@@ -317,13 +317,13 @@ def main():
 
     st.subheader("Step 1: Prepare Data")
 
-    st.info("Two options available: Please select if you want to **Use Demo Data** :bar_chart: OR **Use Your Own Data** :file_folder: to get started!")
+    st.info("Two options available: Please select if you want to :bar_chart: **Use Demo Data** OR :file_folder: **Use Your Own Data** to get started!")
 
     col1, col2 = st.columns(2, border=True)
 
     data_mode = col1.radio(
         label="Use Demo Data or Your Own Data",
-        options=["Use Demo Data", "Use Your Own Data"],
+        options=[":bar_chart: **Use Demo Data**", ":file_folder: **Use Your Own Data**"],
         index=0,
     )
 
@@ -331,12 +331,12 @@ def main():
 
         # with col1:
         #     st.button(
-        #         "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else "Use Demo Data",
+        #         "**✔ Use Demo Data**" if st.session_state["data_mode"] == "demo" else ":bar_chart: **Use Demo Data**",
         #         type="primary" if st.session_state["data_mode"] == "demo" else "secondary",
         #         use_container_width=True,
         #         on_click=selected_use_demo,
         #     )
-        if data_mode == "Use Demo Data":
+        if data_mode == ":bar_chart: **Use Demo Data**":
             demo_files = data_folder.glob(demo_case_prefix + "*")
             demo_names = [file.stem for file in demo_files if file.is_file()]
             demo_names.sort()
@@ -349,12 +349,12 @@ def main():
 
         # with col2:
         #     st.button(
-        #         "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else "Use Your Own Data",
+        #         "✔ Use Your Own Data" if st.session_state["data_mode"] == "custom" else ":file_folder: **Use Your Own Data**",
         #         type="primary" if st.session_state["data_mode"] == "custom" else "secondary",
         #         use_container_width=True,
         #         on_click=selected_use_custom,
         #     )
-        elif data_mode == "Use Your Own Data":
+        elif data_mode == ":file_folder: **Use Your Own Data**":
             st.download_button(
                 label="Click Here to Download the Template (Excel File)",
                 data=load_excel_binary(data_folder / "DT Lung Demo Template.xlsx"),
@@ -371,7 +371,7 @@ def main():
             )
 
     # if st.session_state["data_mode"] == "demo":
-    if data_mode == "Use Demo Data":
+    if data_mode == ":bar_chart: **Use Demo Data**":
         case_dfs = load_excel(data_folder / f"{selected_demo_case}.xlsx")
         selected_case = selected_demo_case
     else:
@@ -514,7 +514,7 @@ def main():
 
         highlighter = make_row_band_tint(predictions_display["Protein Prediction"])
         protein_pred_tab.dataframe(predictions_display["Protein Prediction"].style.apply(highlighter, axis=1).format(nice_number))
-        protein_pred_tab.caption("*Only showing DT-centric protein inference results.")
+        protein_pred_tab.caption("*Only displaying hourly protein inference results for DT-centric approach.")
         protein_pred_tab.plotly_chart(
             protein_line_plot(predictions_display["Protein Prediction"]),
             use_container_width=True,

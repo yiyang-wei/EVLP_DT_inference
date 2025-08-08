@@ -205,7 +205,7 @@ class XGBInference:
         hourly_pred_h3_static_display = HourlyTranslator.to_display_table(self.hourly_pred_h3_static.iloc[0])
         hourly_pred_h3_dynamic_display = HourlyTranslator.to_display_table(self.hourly_pred_h3_dynamic.iloc[0])
         hourly_predictions_display = self.hourly_display_df.add_prefix("Observed ")
-        hourly_predictions_display[f"Predicted {HourlyOrderMap.H2.label}"] = hourly_pred_h2_display[HourlyOrderMap.H2.label].astype(float).round(1)
+        hourly_predictions_display[f"Static Predicted {HourlyOrderMap.H2.label}"] = hourly_pred_h2_display[HourlyOrderMap.H2.label].astype(float).round(1)
         hourly_predictions_display[f"Static Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_static_display[HourlyOrderMap.H3.label].astype(float).round(1)
         hourly_predictions_display[f"Dynamic Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_dynamic_display[HourlyOrderMap.H3.label].astype(float).round(1)
 
@@ -219,7 +219,7 @@ class XGBInference:
         protein_pred_h3_static_display = ProteinTranslator.to_display_table(self.protein_pred_h3_static.iloc[0])
         protein_pred_h3_dynamic_display = ProteinTranslator.to_display_table(self.protein_pred_h3_dynamic.iloc[0])
         protein_predictions_display = self.protein_display_df[[ProteinOrderMap.M60.label, ProteinOrderMap.M120.label, ProteinOrderMap.M180.label]].add_prefix("Observed ")
-        protein_predictions_display[f"Predicted {ProteinOrderMap.M120.label}"] = protein_pred_h2_display[ProteinOrderMap.M120.label].astype(float).round(1)
+        protein_predictions_display[f"Static Predicted {ProteinOrderMap.M120.label}"] = protein_pred_h2_display[ProteinOrderMap.M120.label].astype(float).round(1)
         protein_predictions_display[f"Static Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_static_display[ProteinOrderMap.M180.label].astype(float).round(1)
         protein_predictions_display[f"Dynamic Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_dynamic_display[ProteinOrderMap.M180.label].astype(float).round(1)
 

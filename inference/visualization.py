@@ -27,7 +27,7 @@ def hourly_all_features_line_plot(hourly_prediction: pd.DataFrame, wide: bool = 
     static = pd.DataFrame({
         "Hour": [1, 2, 3] * n_features,
         "Feature": hourly_prediction.index.repeat(3),
-        "Value": hourly_prediction[[f"Observed {HourlyOrderMap.H1.label}", f"Predicted {HourlyOrderMap.H2.label}", f"Static Predicted {HourlyOrderMap.H3.label}"]].values.flatten(),
+        "Value": hourly_prediction[[f"Observed {HourlyOrderMap.H1.label}", f"Static Predicted {HourlyOrderMap.H2.label}", f"Static Predicted {HourlyOrderMap.H3.label}"]].values.flatten(),
         "Type": "Static Predicted"
     })
     dynamic = pd.DataFrame({
@@ -226,7 +226,7 @@ def protein_line_plot(protein_prediction: pd.DataFrame, wide: bool = True):
     static = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
         "Feature": protein_prediction.index.repeat(3),
-        "Value": protein_prediction[[f"Observed {ProteinOrderMap.M60.label}", f"Predicted {ProteinOrderMap.M120.label}", f"Static Predicted {ProteinOrderMap.M180.label}"]].values.flatten(),
+        "Value": protein_prediction[[f"Observed {ProteinOrderMap.M60.label}", f"Static Predicted {ProteinOrderMap.M120.label}", f"Static Predicted {ProteinOrderMap.M180.label}"]].values.flatten(),
         "Type": "Static Predicted"
     })
     dynamic = pd.DataFrame({
@@ -279,7 +279,7 @@ def protein_line_plot_2(protein_prediction: pd.DataFrame):
     static = pd.DataFrame({
         "Minute": [60, 120, 180] * n_features,
         "Feature": protein_prediction.index.repeat(3),
-        "Value": protein_prediction[["Observed 1st Hour", "Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
+        "Value": protein_prediction[["Observed 1st Hour", "Static Predicted 2nd Hour", "Static Predicted 3rd Hour"]].values.flatten(),
         "Type": "Static Predicted"
     })
     dynamic = pd.DataFrame({

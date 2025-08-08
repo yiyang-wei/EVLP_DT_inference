@@ -2,7 +2,7 @@ import pandas as pd
 import warnings
 import pathlib
 from huggingface_hub import snapshot_download
-
+import time
 from inference.XGB_inference import XGBInference
 from GRU.GRU import GRU
 from inference.GRU_inference import TimeSeriesInference
@@ -18,8 +18,10 @@ data_folder.mkdir(exist_ok=True, parents=True)
 output_folder = pathlib.Path("Output")
 output_folder.mkdir(exist_ok=True, parents=True)
 
-snapshot_download("SageLabUHN/DT_Lung", local_dir=model_folder, local_dir_use_symlinks=False)
-snapshot_download("SageLabUHN/DT_Lung_Demo_Data", repo_type="dataset", local_dir=data_folder, local_dir_use_symlinks=False)
+print("Downloading models and demo data from huggingface...")
+snapshot_download("SageLabUHN/DT_Lung", local_dir=model_folder, max_workers=4)
+time.sleep(10)
+snapshot_download("SageLabUHN/DT_Lung_Demo_Data", repo_type="dataset", local_dir=data_folder, max_workers=4, ignore_patterns="*.csv")
 
 inferences = {}
 for demo_case in data_folder.glob("DT Lung Demo Case *.xlsx"):
@@ -56,3 +58,4 @@ for demo_case in data_folder.glob("DT Lung Demo Case *.xlsx"):
         "time_series": time_series_inference
     }
 
+print("\n** All results saved to the DT_Lung/Output folder.")
