@@ -7,7 +7,7 @@ from inference.XGB_inference import XGBInference
 from GRU.GRU import GRU
 from inference.GRU_inference import TimeSeriesInference
 from inference.reformat import OutputSheets
-
+import tarfile
 
 warnings.filterwarnings("ignore")
 
@@ -19,9 +19,18 @@ output_folder = pathlib.Path("Output")
 output_folder.mkdir(exist_ok=True, parents=True)
 
 print("Downloading models and demo data from huggingface...")
-snapshot_download("SageLabUHN/DT_Lung", local_dir=model_folder, max_workers=4)
-time.sleep(10)
-snapshot_download("SageLabUHN/DT_Lung_Demo_Data", repo_type="dataset", local_dir=data_folder, max_workers=4, ignore_patterns="*.csv")
+try:
+    snapshot_download("SageLabUHN/DT_Lung_Demo_Data", repo_type="dataset", local_dir=data_folder, max_workers=1, allow_patterns=["*.xlsx", "*.md"])
+    time.sleep(5)
+    snapshot_download("SageLabUHN/DT_Lung", local_dir=model_folder, max_workers=4, allow_patterns=["*.tar.gz", "*.md"])
+except Exception as e:
+    print(f"Failed to download models or demo data due to Internet issue. Please try again in a few seconds.")
+    exit(1)
+
+tar_files = [file for file in model_folder.glob("*.tar.gz")]
+for tar_file in tar_files:
+    with tarfile.open(tar_file, "r:gz") as tar:
+        tar.extractall(path=model_folder)
 
 inferences = {}
 for demo_case in data_folder.glob("DT Lung Demo Case *.xlsx"):

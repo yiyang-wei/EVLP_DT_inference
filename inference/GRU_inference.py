@@ -135,4 +135,6 @@ class TimeSeriesInference:
             OutputSheets.per_breath_h3_static: self.static_pred_a3.round(dp_map),
             OutputSheets.per_breath_h3_dynamic: self.dynamic_pred_a3.round(dp_map),
         }
+        for sheet_name, df in self.pred_display.items():
+            df.index.name = "Breaths"
 

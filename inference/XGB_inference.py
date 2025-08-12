@@ -208,12 +208,14 @@ class XGBInference:
         hourly_predictions_display[f"Static Predicted {HourlyOrderMap.H2.label}"] = hourly_pred_h2_display[HourlyOrderMap.H2.label].astype(float).round(1)
         hourly_predictions_display[f"Static Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_static_display[HourlyOrderMap.H3.label].astype(float).round(1)
         hourly_predictions_display[f"Dynamic Predicted {HourlyOrderMap.H3.label}"] = hourly_pred_h3_dynamic_display[HourlyOrderMap.H3.label].astype(float).round(1)
+        hourly_predictions_display.index.name = "Parameter"
 
         image_pc_pred_static_display = ImagePCTranslator.to_display_table(None, self.pc_pred_static.iloc[0])
         image_pc_pred_dynamic_display = ImagePCTranslator.to_display_table(None, self.pc_pred_dynamic.iloc[0])
         image_pc_predictions_display = self.image_pc_display_df.add_prefix("Observed ")
         image_pc_predictions_display[f"Static Predicted {ImagePCOrderMap.H3.label}"] = image_pc_pred_static_display[ImagePCOrderMap.H3.label].astype(float)
         image_pc_predictions_display[f"Dynamic Predicted {ImagePCOrderMap.H3.label}"] = image_pc_pred_dynamic_display[ImagePCOrderMap.H3.label].astype(float)
+        image_pc_predictions_display.index.name = "Parameter"
 
         protein_pred_h2_display = ProteinTranslator.to_display_table(self.protein_pred_h2.iloc[0])
         protein_pred_h3_static_display = ProteinTranslator.to_display_table(self.protein_pred_h3_static.iloc[0])
@@ -224,12 +226,14 @@ class XGBInference:
         protein_predictions_display[f"Dynamic Predicted {ProteinOrderMap.M180.label}"] = protein_pred_h3_dynamic_display[ProteinOrderMap.M180.label].astype(float).round(1)
         protein_predictions_display.loc[ProteinMap.IL_6.label] = protein_predictions_display.loc[ProteinMap.IL_6.label].round()
         protein_predictions_display.loc[ProteinMap.IL_8.label] = protein_predictions_display.loc[ProteinMap.IL_8.label].round()
+        protein_predictions_display.index.name = "Parameter"
 
         transcriptomics_pred_static_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_static.iloc[0])
         transcriptomics_pred_dynamic_display = TranscriptomicsTranslator.to_display_table(self.transcriptomics_pred_dynamic.iloc[0])
         transcriptomics_predictions_display = self.transcriptomics_display_df.add_prefix("Observed ")
         transcriptomics_predictions_display[f"Static Predicted {TranscriptomicsOrderMap.cit2.label}"] = transcriptomics_pred_static_display[TranscriptomicsOrderMap.cit2.label].astype(int)
         transcriptomics_predictions_display[f"Dynamic Predicted {TranscriptomicsOrderMap.cit2.label}"] = transcriptomics_pred_dynamic_display[TranscriptomicsOrderMap.cit2.label].astype(int)
+        transcriptomics_predictions_display.index.name = "Parameter"
 
         self.predictions_display = {
             OutputSheets.hourly_lung_function: hourly_predictions_display,

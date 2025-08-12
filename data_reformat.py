@@ -414,17 +414,22 @@ def main():
                     hourly_input_df.loc[case],
                     edema_input_df.loc[case]
                 )
+                hourly_display_df.index.name = "Parameter"
                 pc_display_df = ImagePCTranslator.to_display_table(
                     pc_1hr_input_df.loc[case],
                     pc_3hr_input_df.loc[case]
                 )
+                pc_display_df.index.name = "Parameter"
                 protein_display_df = ProteinTranslator.to_display_table(protein_input_df.loc[case])
-
+                protein_display_df.index.name = "Parameter"
                 transcriptomics_display_df = TranscriptomicsTranslator.to_display_table(
                     cit1_input_df.loc[case],
                     cit2_input_df.loc[case]
                 )
+                transcriptomics_display_df.index.name = "Parameter"
                 timeseries_display_dfs = PerBreathTranslator.to_display_table(timeseries_input_df.loc[case])
+                for df in timeseries_display_dfs.values():
+                    df.index.name = "Breaths"
                 hourly_display_df.to_excel(writer, sheet_name=InputSheets.hourly_lung_function)
                 pc_display_df.to_excel(writer, sheet_name=InputSheets.lung_image)
                 protein_display_df.to_excel(writer, sheet_name=InputSheets.protein)
@@ -436,22 +441,27 @@ def main():
             index=hourly_features_to_display,
             columns=list(HourlyOrderMap.all_labels())
         )
+        template_hourly_display_df.index.name = "Parameter"
         template_pc_display_df = pd.DataFrame(
             index=list(ImagePCMap.all_labels()),
             columns=list(ImagePCOrderMap.all_labels())
         )
+        template_pc_display_df.index.name = "Parameter"
         template_protein_display_df = pd.DataFrame(
             index=list(ProteinMap.all_labels()),
             columns=list(ProteinOrderMap.all_labels())
         )
+        template_protein_display_df.index.name = "Parameter"
         template_transcriptomics_display_df = pd.DataFrame(
             index=transcriptomics_display_df.index,
             columns=list(TranscriptomicsOrderMap.all_labels())
         )
+        template_transcriptomics_display_df.index.name = "Parameter"
         template_timeseries_display_df = pd.DataFrame(
             index=timeseries_display_dfs["A1"].index,
             columns= list(PerBreathParameterMap.all_labels())
         )
+        template_timeseries_display_df.index.name = "Breaths"
         with pd.ExcelWriter(save_folder / "Display Data Template.xlsx", mode='w') as writer:
             template_hourly_display_df.to_excel(writer, sheet_name=InputSheets.hourly_lung_function)
             template_pc_display_df.to_excel(writer, sheet_name=InputSheets.lung_image)

@@ -11,7 +11,7 @@ import plotly.express as px
 from pathlib import Path
 from huggingface_hub import snapshot_download
 import time
-
+import tarfile
 
 warnings.filterwarnings("ignore")
 
@@ -47,10 +47,14 @@ def download_huggingface(data_folder, model_folder):
     model_repo_id = "SageLabUHN/DT_Lung"
     data_repo_id = "SageLabUHN/DT_Lung_Demo_Data"
     with st.spinner(f"Downloading dataset from huggingface.co/datasets/{data_repo_id}"):
-        retry_snapshot_download(repo_id=data_repo_id, repo_type="dataset", local_dir=data_folder, max_workers=4)
+        retry_snapshot_download(repo_id=data_repo_id, repo_type="dataset", local_dir=data_folder, max_workers=1, allow_patterns=["*.xlsx", "*.md"])
     st.success(f"Successfully downloaded dataset from huggingface.co/datasets/{data_repo_id}")
     with st.spinner(f"Downloading model from huggingface.co/{model_repo_id}"):
-        retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, max_workers=4, ignore_patterns="*.csv")
+        retry_snapshot_download(repo_id=model_repo_id, local_dir=model_folder, max_workers=4, allow_patterns=["*.tar.gz", "*.md"])
+        tar_files = [file for file in model_folder.glob("*.tar.gz")]
+        for tar_file in tar_files:
+            with tarfile.open(tar_file, "r:gz") as tar:
+                tar.extractall(path=model_folder)
     st.success(f"Successfully downloaded model from huggingface.co/{model_repo_id}")
 
 def selected_use_demo():
@@ -428,7 +432,8 @@ def main():
 
     st.subheader("Step 2: Run Inference")
 
-    static_gru, dynamic_gru = check_modality_missing(case_dfs)
+    with st.expander("Input Data Sanity Check", expanded=True):
+        static_gru, dynamic_gru = check_modality_missing(case_dfs)
 
     prediction_save_path = output_folder / f"{selected_case} predictions.xlsx"
 

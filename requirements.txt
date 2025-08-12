@@ -16,3 +16,4 @@ plotly
 streamlit
 watchdog
 huggingface_hub
+hf_xet
