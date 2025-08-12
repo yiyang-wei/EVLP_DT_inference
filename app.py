@@ -404,7 +404,7 @@ def main():
         case_dfs[InputSheets.per_breath_h3]
     ]
 
-    with (st.expander(f"Data Preview for {selected_case} (Data editing not allowed in this preview)", expanded=True)):
+    with (st.expander(f"Data Preview for **{selected_case}** (Data editing not allowed in this preview)", expanded=True)):
         (
             hourly_display_tab,
             image_pc_display_tab,
@@ -432,7 +432,7 @@ def main():
 
     st.subheader("Step 2: Run Inference")
 
-    with st.expander("Input Data Sanity Check", expanded=True):
+    with st.expander("**Input Data Sanity Check**", expanded=True):
         static_gru, dynamic_gru = check_modality_missing(case_dfs)
 
     prediction_save_path = output_folder / f"{selected_case} predictions.xlsx"
@@ -462,7 +462,7 @@ def main():
 
     st.subheader("Step 3: View Results")
     if predictions_display is not None:
-        with st.container(border=True):
+        with st.expander("**DT Results Visualization**", expanded=True):
             (
                 hourly_pred_tab,
                 image_pc_pred_tab,
