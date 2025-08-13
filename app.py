@@ -424,6 +424,7 @@ def main():
         ])
         hourly_display_tab.dataframe(hourly_display_df.loc[hourly_features_to_display])
         image_pc_display_tab.dataframe(image_pc_display_df)
+        image_pc_display_tab.write("**Note:** For a detailed description of the methodology for deriving image-based features, please refer to our previous publication. [:material/article: **Link to Paper**](https://doi.org/10.1038/s41746-024-01260-z)")
         protein_display_tab.dataframe(protein_display_df)
         transcriptomics_display_tab.dataframe(transcriptomics_display_df)
         time_series_a1_display_tab.dataframe(time_series_display_dfs[0])
